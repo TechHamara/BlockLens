@@ -1,0 +1,45 @@
+import { View } from '../view.js';
+import { Label } from '../widgets.js';
+import { Node } from './node.js';
+
+export class NodeList extends View {
+    constructor() {
+        super('DIV');
+        this.nodes = [];
+        this.helpText = new Label('Nothing to see here!');
+        this.helpText.addStyleName('node-list__help-text');
+        this.addView(this.helpText);
+        this.addStyleName('node-list');
+    }
+
+    addNodeAsync(nodePromise) {
+        nodePromise.then((node) => {
+            this.addNode(node);
+        });
+    }
+
+    addNode(node) {
+        this.addView(node);
+        node.setNodeList(this);
+        this.nodes.push(node);
+    }
+
+    setActiveNode(node) {
+        if (this.activeNode != null) {
+            this.activeNode.removeStyleName('blocklens-node--active');
+        }
+        this.activeNode = node;
+        if (node != null) {
+            node.addStyleName('blocklens-node--active');
+        }
+    }
+
+    setVisible(visible) {
+        super.setVisible(visible);
+        if (visible) {
+            setTimeout(() => {
+                this.domElement.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
+            }, 100);
+        }
+    }
+}
