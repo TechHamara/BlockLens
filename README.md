@@ -79,6 +79,20 @@
 
 ---
 
+## Screenshots
+
+<img width="1629" height="895" alt="Home-light-theme" src="https://github.com/user-attachments/assets/0aa15dc6-f684-45a7-b5d2-e2fa1e83df26" />
+<img width="1631" height="899" alt="dark-theme" src="https://github.com/user-attachments/assets/acd7f5e9-fbb1-4472-a548-6613bcfa43ba" />
+
+---
+
+<img width="1641" height="899" alt="aix-light-theme" src="https://github.com/user-attachments/assets/ea4795f8-ab0a-4302-ae0f-bfd6aa9a05ad" />
+<img width="1634" height="904" alt="dark2" src="https://github.com/user-attachments/assets/8b1e7d77-6053-480c-b4e1-a8090ef42b5f" />
+<img width="1635" height="891" alt="aia-vew-demo3" src="https://github.com/user-attachments/assets/c580f2eb-fef9-4787-8155-064c07405249" />
+<img width="1633" height="894" alt="aia-vew-demo2" src="https://github.com/user-attachments/assets/c11ecc3b-77e4-4234-8901-cab150bdf5a2" />
+
+---
+
 ## 📦 Installation
 
 <details>
