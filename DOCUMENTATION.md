@@ -34,6 +34,8 @@ Stop guessing what an extension does! Upload the `.aix` via BlockLens and see:
 - **Events, Methods, & Properties**: Neatly organized with type information.
 - **Smart Helpers**: It even renders dropdown helpers for property blocks, just like in the builder.
 - **Theme Switcher**: View blocks in **App Inventor**, **Kodular**, or **Niotron** color themes!
+- **Bulk Export** - Download full documentation (Markdown + Images) as a ZIP file
+- **Auto Documentation** - Generate professional markdown docs with one click
 
 ### 3. 📝 Documentation Generator (For Developers)
 Extension developers, this is for you!
@@ -70,7 +72,7 @@ We support multiple block styles to match your favorite builder:
 
 ## 🌐 Open Source & Credits
 This project is fully open source!
-- **Source Code**: [GitHub Repository](https://techhamara.github.io/BlockLens)
+- **Source Code**: [GitHub Repository](https://github.com/TechHamara/BlockLens)
 - **Original Library**: [Kodular/ai-unchive](https://github.com/Kodular/ai-unchive)
 
 Feedback and contributions are welcome! 🚀

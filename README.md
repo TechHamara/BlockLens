@@ -46,6 +46,9 @@
 - 🧩 **Component Tree** - View hierarchical component structure
 - 📁 **Asset Manager** - Preview images, audio, and other assets
 - 🔲 **Block Viewer** - Visualize all block logic with proper rendering
+- 🔲 **Export Blocks** - Download high-quality PNGs of Separate blocks for tutorials or documentation.
+- 🔲 **Page Layout** - View all your page layouts in List View and Grid View.
+- 🔲 **Block Scale** - Zoom in and out of blocks on Fingers Scale.
 
 ### For AIX Extensions
 - 📊 **Extension Info** - View extension metadata and package details
@@ -53,9 +56,9 @@
 - ⚡ **Events Analyzer** - See all events with their parameters
 - 🔧 **Properties Browser** - View get/set properties with types in a clean vertical list
 - 🎨 **Theme Switcher** - Toggle block colors (App Inventor, Kodular, Niotron)
-- � **Dictionary Helpers** - Automatically renders helper dropdowns for enum properties
-- � **Bulk Export** - Download full documentation (Markdown + Images) as a ZIP file
-- 📝 **Auto Documentation** - Generate professional markdown docs with one click
+-  **Dictionary Helpers** - Automatically renders helper dropdowns for enum properties
+-  **Bulk Export** - Download full documentation (Markdown + Images) as a ZIP file
+-  **Auto Documentation** - Generate professional markdown docs with one click
 
 ---
 
@@ -170,6 +173,14 @@ We welcome contributions from the community! Here's how you can help:
 
 ### Latest Updates
 - ✅ Version 1.0.0 Added 
+
+---
+
+## 🎯 Community Posts
+
+- App Inventor Community: [BlockLens - Advanced AIA Viewer & AIX Analyzer]()
+- Kodular Community: [BlockLens - Advanced AIA Viewer & AIX Analyzer]()
+- Niotron Community: [BlockLens - Advanced AIA Viewer & AIX Analyzer]()
 
 ---
 
