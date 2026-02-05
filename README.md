@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/TechHamara/BlockLens/">
+  <a href="https://techhamara.github.io/BlockLens/">
     <img src="https://img.shields.io/badge/Live%20Demo-Visit%20Website-6200EA?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Live Demo">
   </a>
   <img src="https://img.shields.io/badge/Version-1.0.0-blue?style=for-the-badge" alt="Version 1.0.0">
