@@ -178,9 +178,9 @@ We welcome contributions from the community! Here's how you can help:
 
 ## 🎯 Community Posts
 
-- App Inventor Community: [BlockLens - Advanced AIA Viewer & AIX Analyzer]()
-- Kodular Community: [BlockLens - Advanced AIA Viewer & AIX Analyzer]()
-- Niotron Community: [BlockLens - Advanced AIA Viewer & AIX Analyzer]()
+- App Inventor [Community](https://community.appinventor.mit.edu/t/o-s-blocklens-advanced-aia-viewer-aix-analyzer/165017?u=techhamara)
+- Kodular [Community](https://community.kodular.io/t/o-s-blocklens-advanced-aia-viewer-aix-analyzer/313402?u=techhamara91)
+- Niotron [Community](https://community.niotron.com/t/o-s-blocklens-advanced-aia-viewer-aix-analyzer/23971?u=techhamara)
 
 ---
 
