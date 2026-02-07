@@ -59,6 +59,7 @@ Extension developers, this is for you!
 - Summary Download Button working properly(Download full documentation (Project Summary + Blocks Images) as a ZIP file)
 - Fixed issue where some blocks were not rendering correctly in the documentation.
 - Resolved mobile overflow issues in documentation tables.
+- Helper blocks names are now visible in documentation.
 
 ---
 

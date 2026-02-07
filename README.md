@@ -192,6 +192,7 @@ We welcome contributions from the community! Here's how you can help:
 - Fixed issue where some blocks were not rendering correctly in the documentation.
 - Resolved mobile overflow issues in documentation tables.
 - Summary Download Button working properly(Download full documentation (Project Summary + Blocks Images) as a ZIP file)
+- Helper blocks names are now visible in documentation.
 
 ### Version 1.0.0
 - Initial Release 
