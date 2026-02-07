@@ -302,14 +302,20 @@ export class MarkdownDocsPage extends View {
             const svg = container.querySelector('svg');
             if (!svg) return;
 
-            // Apply to all paths inside the SVG
-            // This is a more aggressive approach to ensure theming works
-            const allPaths = svg.querySelectorAll('.blocklyPath, .blocklyPathLight, .blocklyPathDark');
+            // Find the main block group
+            const rootBlock = svg.querySelector('.blocklyBlockCanvas > .blocklyDraggable') || svg.querySelector('.blocklyDraggable');
+            if (!rootBlock) return;
 
-            allPaths.forEach(path => {
-                // Skip helper blocks if possible - helper blocks usually have specific structure
-                // But for now, let's just color everything to verify it works
+            // Update main paths - ONLY direct children of the root block
+            // ensuring we don't theme connected helper blocks or inputs (they keep their red color)
+            const paths = Array.from(rootBlock.children).filter(el =>
+                el.tagName === 'path' &&
+                (el.classList.contains('blocklyPath') ||
+                    el.classList.contains('blocklyPathLight') ||
+                    el.classList.contains('blocklyPathDark'))
+            );
 
+            paths.forEach(path => {
                 if (path.classList.contains('blocklyPath')) {
                     path.style.setProperty('fill', colors.fill, 'important');
                     path.style.setProperty('stroke', colors.stroke, 'important');
@@ -321,8 +327,6 @@ export class MarkdownDocsPage extends View {
                     path.style.setProperty('stroke', 'rgba(0,0,0,0.2)', 'important');
                 }
             });
-
-            // Handle text color? Usually white or black but let's stick to paths for now
         });
     }
 
