@@ -532,8 +532,23 @@ export class MockBlockRenderer {
 
         // Calculate dimensions
         const titleWidth = this.measureText(`call  ${instanceName}  .${method.name}`) + 60;
-        const paramWidth = params.length > 0 ? Math.max(...params.map(p => this.measureText(p.name) + 100)) : 0;
-        const w = Math.max(200, titleWidth, paramWidth);
+
+        // Calculate max param width including helper blocks
+        let maxParamWidth = 0;
+        for (const p of params) {
+            let paramWidth = this.measureText(p.name) + 100;
+            if (p.helper) {
+                // Add helper block width
+                const helperData = p.helper.data || p.helper;
+                const tag = helperData.tag || helperData.key || 'Option';
+                const defaultOpt = helperData.defaultOpt || (helperData.options && helperData.options[0] ? helperData.options[0].name : '');
+                const helperWidth = this.measureText(tag) + this.measureText(defaultOpt) + 55;
+                paramWidth = this.measureText(p.name) + helperWidth + 20;
+            }
+            maxParamWidth = Math.max(maxParamWidth, paramWidth);
+        }
+
+        const w = Math.max(200, titleWidth, maxParamWidth);
         const baseHeight = 35;
         const paramHeight = params.length * 28;
         const h = baseHeight + paramHeight + (params.length > 0 ? 10 : 0);
@@ -568,7 +583,83 @@ export class MockBlockRenderer {
         let y = 55;
         for (const p of params) {
             svg.appendChild(this.createText(p.name, 24, y, 'normal', 11));
-            svg.appendChild(this.createParamSocket(w - 60, y - 12, 50, 18));
+
+            if (p.helper) {
+                // Render helper block connected to this param
+                const helperData = p.helper.data || p.helper;
+                const helperType = p.helper.type;
+
+                let tag = helperData.tag || helperData.key || 'Option';
+                let defaultOpt = helperData.defaultOpt || (helperData.options && helperData.options[0] ? helperData.options[0].name : '');
+
+                // Handle special helper types
+                if (helperType === 'ASSET') {
+                    defaultOpt = 'example.png';
+                    tag = 'Asset';
+                } else if (helperType === 'SCREEN') {
+                    defaultOpt = 'Screen1';
+                    tag = 'Screen';
+                } else if (helperType === 'PROVIDER') {
+                    defaultOpt = 'ChatBot1';
+                    tag = 'ChatBot';
+                } else if (helperType === 'PROVIDER_MODEL') {
+                    defaultOpt = 'Gemini';
+                    tag = 'Model';
+                }
+
+                const helperX = this.measureText(p.name) + 35;
+                const helperY = y - 12;
+                const helperW = this.measureText(tag) + this.measureText(defaultOpt) + 55;
+                const helperH = 22;
+
+                // Helper block rectangle (red)
+                const helperRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                helperRect.setAttribute('x', helperX);
+                helperRect.setAttribute('y', helperY);
+                helperRect.setAttribute('width', helperW);
+                helperRect.setAttribute('height', helperH);
+                helperRect.setAttribute('rx', '3');
+                helperRect.setAttribute('ry', '3');
+                helperRect.setAttribute('fill', this.COLORS.helper);
+                helperRect.setAttribute('stroke', this.COLORS.helper_dark);
+                helperRect.setAttribute('stroke-width', '1');
+                svg.appendChild(helperRect);
+
+                // Helper tag label (white text)
+                svg.appendChild(this.createText(tag, helperX + 8, helperY + 15, 'bold', 10, '#FFFFFF'));
+
+                // White badge for value with dropdown
+                const tagWidth = this.measureText(tag);
+                const valueBadgeX = helperX + tagWidth + 14;
+                const valueBadgeY = helperY + 3;
+                const valueBadgeW = this.measureText(defaultOpt) + 18;
+                const valueBadgeH = 16;
+
+                // White rounded badge for value
+                const valueRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                valueRect.setAttribute('x', valueBadgeX);
+                valueRect.setAttribute('y', valueBadgeY);
+                valueRect.setAttribute('width', valueBadgeW);
+                valueRect.setAttribute('height', valueBadgeH);
+                valueRect.setAttribute('rx', '3');
+                valueRect.setAttribute('ry', '3');
+                valueRect.setAttribute('fill', '#FFFFFF');
+                svg.appendChild(valueRect);
+
+                // Value text (dark)
+                svg.appendChild(this.createText(defaultOpt, valueBadgeX + 5, valueBadgeY + 11, 'normal', 9, '#333333'));
+
+                // Dropdown triangle inside white badge
+                const triX = valueBadgeX + this.measureText(defaultOpt) + 7;
+                const triY = valueBadgeY + 8;
+                const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+                polygon.setAttribute('points', `${triX},${triY - 2} ${triX + 4},${triY - 2} ${triX + 2},${triY + 2}`);
+                polygon.setAttribute('fill', '#666666');
+                svg.appendChild(polygon);
+            } else {
+                // Empty socket for non-helper params
+                svg.appendChild(this.createParamSocket(w - 60, y - 12, 50, 18));
+            }
             y += 28;
         }
 
@@ -1058,14 +1149,14 @@ export class MockBlockRenderer {
 export class BlockExporter {
     static async exportAllToZip(blocks, filename) {
         return new Promise((resolve, reject) => {
-            zip.createWriter(new zip.BlobWriter('application/zip'), async (writer) => {
+            window.zip.createWriter(new window.zip.BlobWriter('application/zip'), async (writer) => {
                 try {
                     for (let i = 0; i < blocks.length; i++) {
                         const block = blocks[i];
                         const blob = await MockBlockRenderer.svgToPngBlob(block.svg);
                         const name = `${i}_${block.name.replace(/[^a-zA-Z0-9]/g, '_')}.png`;
                         await new Promise((res, rej) => {
-                            writer.add(name, new zip.BlobReader(blob), res, rej);
+                            writer.add(name, new window.zip.BlobReader(blob), res, rej);
                         });
                     }
                     writer.close((blob) => {
@@ -1080,3 +1171,4 @@ export class BlockExporter {
         });
     }
 }
+

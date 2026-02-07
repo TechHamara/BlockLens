@@ -630,8 +630,11 @@ body.dark-mode .blocklens-node--faulty {
     /* Checkered pattern can be added here */
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     min-height: 120px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
 }
 
 .block-node__download-btn {
@@ -1378,8 +1381,13 @@ body.dark-mode .doc-table code {
     border-radius: 8px;
     padding: 16px;
     margin: 12px 0;
-    overflow: auto;
+    overflow-x: auto;
+    width: 100%;
     border: 1px solid var(--border);
+    /* Ensure flex children don't shrink below content width */
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
 }
 
 .docs-block-preview--properties {
@@ -1779,12 +1787,41 @@ body.dark-mode .docs-return code {
 .blocklens-block-node__preview {
     /* Allow preview to expand and scroll if too big */
     width: 100%;
-    overflow-x: auto;
+    overflow: auto;
+    /* Enable both scrollbars */
     display: flex;
-    justify-content: center;
-    /* Center small blocks */
+    /* justify-content: center; REMOVED to allow scrolling of centered content via margin */
     /* Add padding to ensure content isn't cut off */
     padding: 10px;
+
+    /* Ensure scrollbar is visible */
+    scrollbar-width: thin;
+    scrollbar-color: var(--text-secondary) transparent;
+}
+
+/* Center the content but allow scrolling */
+.blocklens-block-node__preview>* {
+    margin: auto;
+    flex-shrink: 0;
+}
+
+/* Custom Scrollbar for Block Preview */
+.blocklens-block-node__preview::-webkit-scrollbar {
+    height: 8px;
+    width: 8px;
+}
+
+.blocklens-block-node__preview::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.blocklens-block-node__preview::-webkit-scrollbar-thumb {
+    background-color: var(--text-secondary);
+    border-radius: 4px;
+}
+
+.blocklens-block-node__preview::-webkit-scrollbar-thumb:hover {
+    background-color: var(--text);
 }
 
 /* ==========================================
@@ -1881,13 +1918,20 @@ body.dark-mode .blocklens-block-node__preview {
     justify-content: space-between;
     gap: 16px;
     margin-bottom: 20px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    overflow-x: auto;
     position: sticky;
     top: 0;
     z-index: 10;
     background: var(--bg);
     padding: 12px 0;
     border-radius: 12px;
+    /* Hide scrollbar on desktop if not needed, or style it */
+    scrollbar-width: thin;
+}
+
+.markdown-docs-toolbar>* {
+    flex-shrink: 0;
 }
 
 .markdown-docs-toggle {
@@ -1983,13 +2027,47 @@ body.dark-mode .blocklens-block-node__preview {
 
 .markdown-preview-area {
     flex: 1;
-    overflow-y: auto;
+    overflow: auto;
+    /* Allow both vertical and horizontal scrolling */
     padding: 32px 48px;
     background: var(--bg-secondary);
     border-radius: 16px;
     box-shadow: 0 4px 16px var(--shadow);
     border: 1px solid var(--border);
     color: var(--text);
+    /* Improve scrollbar UX */
+    scrollbar-width: thin;
+    scrollbar-color: var(--text-secondary) transparent;
+    /* Ensure standard width */
+
+    /* Ensure box model is correct */
+    box-sizing: border-box;
+    /* Ensure it has a width constraint to scroll against, though flex should handle it */
+    min-width: 0;
+}
+
+/* Custom Scrollbar for Preview Area to match tables */
+/* Custom Scrollbar for Preview Area to match block previews */
+.markdown-preview-area::-webkit-scrollbar {
+    height: 8px;
+    width: 8px;
+}
+
+.markdown-preview-area::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.markdown-preview-area::-webkit-scrollbar-thumb {
+    background-color: var(--text-secondary);
+    border-radius: 4px;
+}
+
+.markdown-preview-area::-webkit-scrollbar-thumb:hover {
+    background-color: var(--text);
+}
+
+.markdown-preview-area::-webkit-scrollbar-corner {
+    background: transparent;
 }
 
 /* GitHub markdown-body container styling */
@@ -2144,6 +2222,53 @@ body.dark-mode .blocklens-block-node__preview {
     margin-bottom: 24px;
 }
 
+/* Responsive Table */
+/* Responsive Table */
+.table-responsive {
+    display: block;
+    width: 100%;
+    margin: 16px 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    /* Ensure scrollbar is visible for desktop mouse interaction */
+    scrollbar-width: thin;
+    scrollbar-color: var(--text-secondary) transparent;
+}
+
+/* Custom Scrollbar for Webkit */
+.table-responsive::-webkit-scrollbar {
+    height: 8px;
+}
+
+.table-responsive::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.table-responsive::-webkit-scrollbar-thumb {
+    background-color: var(--border);
+    border-radius: 4px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb:hover {
+    background-color: var(--text-secondary);
+}
+
+.table-responsive .doc-table {
+    margin: 0;
+    border: none;
+    border-radius: 0;
+    width: 100%;
+    /* Ensure table takes up at least 100%, but can grow */
+    min-width: 100%;
+}
+
+.table-responsive td,
+.table-responsive th {
+    white-space: nowrap;
+}
+
 .markdown-raw-area {
     flex: 1;
     width: 100%;
@@ -2291,7 +2416,6 @@ body.dark-mode .markdown-raw-area {
     width: 100%;
     margin-right: 0;
     margin-bottom: 24px;
-    vertical-align: top;
     min-width: 50px;
 }
 
@@ -2682,4 +2806,113 @@ body.dark-mode .faq-item__question:hover {
         flex-direction: column;
         text-align: center;
     }
+}
+
+/* ==========================================
+   MOBILE RESPONSIVENESS FOR MARKDOWN DOCS
+   ========================================== */
+@media (max-width: 768px) {
+    .markdown-docs-header {
+        padding: 0 16px;
+        height: 56px;
+    }
+
+    .markdown-docs-header__title {
+        font-size: 16px;
+    }
+
+    .markdown-docs-main {
+        padding: 16px;
+    }
+
+    .markdown-docs-toolbar {
+        margin-bottom: 16px;
+        padding: 8px 0;
+    }
+
+    .markdown-preview-area {
+        padding: 16px;
+        /* Reduced from 32px 48px */
+        border-radius: 12px;
+    }
+
+    .markdown-preview-area h1 {
+        font-size: 1.8em;
+    }
+
+    .markdown-preview-area h2 {
+        font-size: 1.3em;
+        margin-top: 24px;
+    }
+
+    .docs-block-item {
+        padding: 12px;
+    }
+
+    .docs-block-preview {
+        padding: 8px;
+    }
+
+    /* Force tables to be scrollable */
+    .table-responsive {
+        display: block;
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+/* ==========================================
+   SUMMARY DOWNLOAD BUTTON
+   ========================================== */
+.unchive-summary-node__header {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+    color: white !important;
+    border: none;
+    border-radius: 12px;
+    padding: 16px 24px;
+    margin: 16px 0;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(98, 0, 234, 0.3);
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+
+    /* Layout */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+
+    /* Typography */
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.unchive-summary-node__header:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(98, 0, 234, 0.4);
+}
+
+.unchive-summary-node__header:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(98, 0, 234, 0.3);
+}
+
+/* Icon style inside the button */
+.unchive-summary-node__header i {
+    font-size: 24px;
+    color: white !important;
+    /* Ensure icon is first */
+    order: -1;
+}
+
+/* Subtext style (if any) */
+.unchive-summary-node__header small {
+    color: rgba(255, 255, 255, 0.8) !important;
+    font-weight: 500;
+    text-transform: none;
+    display: block;
+    font-size: 12px;
+    margin-top: 2px;
 }

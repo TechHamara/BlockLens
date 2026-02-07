@@ -47,6 +47,22 @@ export class MarkdownDocsPage extends View {
         };
     }
 
+    /**
+     * Helper to enable keyboard scrolling for focused elements
+     */
+    enableKeyboardScroll(element) {
+        element.setAttribute('tabindex', '0');
+        element.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight') {
+                element.scrollLeft += 50;
+                e.preventDefault();
+            } else if (e.key === 'ArrowLeft') {
+                element.scrollLeft -= 50;
+                e.preventDefault();
+            }
+        });
+    }
+
     render() {
         this.clear();
 
@@ -80,6 +96,7 @@ export class MarkdownDocsPage extends View {
         this.previewArea = new View('DIV');
         this.previewArea.setStyleName('markdown-preview-area');
         this.previewArea.addStyleName('markdown-body');
+        this.enableKeyboardScroll(this.previewArea.domElement);
         this.contentWrapper.addView(this.previewArea);
 
         // Raw code textarea
@@ -114,16 +131,18 @@ export class MarkdownDocsPage extends View {
                 </div>
                 
                 <h2>📝 Specifications</h2>
-                <table class="doc-table">
-                    <tbody>
-                        <tr><td>📦 Package</td><td><code>${info.type}</code></td></tr>
-                        <tr><td>⚙️ Version</td><td><code>${info.versionName}</code></td></tr>
-                        ${info.minSdk ? `<tr><td>📱 Minimum API Level</td><td>${info.minSdk}</td></tr>` : ''}
-                        ${info.author ? `<tr><td>👤 Author</td><td>${info.author}</td></tr>` : ''}
-                        <tr><td>📅 Updated</td><td>${info.dateBuilt ? info.dateBuilt.split('T')[0] : new Date().toISOString().split('T')[0]}</td></tr>
-                        ${info.compiledBy ? `<tr><td>💻 Built Using</td><td>${info.compiledBy}</td></tr>` : ''}
-                    </tbody>
-                </table>
+                <div class="table-responsive">
+                    <table class="doc-table">
+                        <tbody>
+                            <tr><td>📦 Package</td><td><code>${info.type}</code></td></tr>
+                            <tr><td>⚙️ Version</td><td><code>${info.versionName}</code></td></tr>
+                            ${info.minSdk ? `<tr><td>📱 Minimum API Level</td><td>${info.minSdk}</td></tr>` : ''}
+                            ${info.author ? `<tr><td>👤 Author</td><td>${info.author}</td></tr>` : ''}
+                            <tr><td>📅 Updated</td><td>${info.dateBuilt ? info.dateBuilt.split('T')[0] : new Date().toISOString().split('T')[0]}</td></tr>
+                            ${info.compiledBy ? `<tr><td>💻 Built Using</td><td>${info.compiledBy}</td></tr>` : ''}
+                        </tbody>
+                    </table>
+                </div>
             `;
 
             // Events Section
@@ -160,38 +179,88 @@ export class MarkdownDocsPage extends View {
                 docContainer.appendChild(methodsSection);
             }
 
-            // Block Properties (Setters) Section
-            if (info.blockProperties.length > 0) {
+            // Separate properties into Setters (write-only, read-write) and Getters (read-only, read-write)
+            const setterProps = info.blockProperties.filter(p => p.rw === 'write-only' || p.rw === 'read-write');
+            const getterProps = info.blockProperties.filter(p => p.rw === 'read-only' || p.rw === 'read-write');
+
+            // Setters Section
+            if (setterProps.length > 0) {
                 const settersSection = document.createElement('div');
                 settersSection.className = 'docs-section';
                 settersSection.innerHTML = `
                     <h2><kbd>Setters:</kbd></h2>
-                    <p><strong>${info.name}</strong> has total ${info.blockProperties.length} setter properties.</p>
+                    <p><strong>${info.name}</strong> has total ${setterProps.length} setter properties.</p>
                 `;
 
-                info.blockProperties.forEach((prop, idx) => {
-                    const itemDiv = this.createPropertyBlockItem(prop, info.name, idx + 1);
+                setterProps.forEach((prop, idx) => {
+                    const itemDiv = this.createSetterBlockItem(prop, info.name, idx + 1);
                     settersSection.appendChild(itemDiv);
                 });
 
                 docContainer.appendChild(settersSection);
             }
 
-            // Regular Properties Section
-            if (info.properties.length > 0) {
-                const propsSection = document.createElement('div');
-                propsSection.className = 'docs-section';
-                propsSection.innerHTML = `
-                    <h2><kbd>Properties:</kbd></h2>
-                    <p><strong>${info.name}</strong> has total ${info.properties.length} properties.</p>
+            // Getters Section
+            if (getterProps.length > 0) {
+                const gettersSection = document.createElement('div');
+                gettersSection.className = 'docs-section';
+                gettersSection.innerHTML = `
+                    <h2><kbd>Getters:</kbd></h2>
+                    <p><strong>${info.name}</strong> has total ${getterProps.length} getter properties.</p>
                 `;
 
-                info.properties.forEach((prop, idx) => {
-                    const itemDiv = this.createPropertyBlockItem(prop, info.name, idx + 1);
-                    propsSection.appendChild(itemDiv);
+                getterProps.forEach((prop, idx) => {
+                    const itemDiv = this.createGetterBlockItem(prop, info.name, idx + 1);
+                    gettersSection.appendChild(itemDiv);
                 });
 
-                docContainer.appendChild(propsSection);
+                docContainer.appendChild(gettersSection);
+            }
+
+            // Regular Properties - also separate into Setters and Getters
+            if (info.properties.length > 0) {
+                // Convert properties to have rw field if not present (designer properties are usually read-write)
+                const propsWithRw = info.properties.map(p => ({
+                    ...p,
+                    rw: p.rw || 'read-write' // Default to read-write for designer properties
+                }));
+
+                const propSetters = propsWithRw.filter(p => p.rw === 'write-only' || p.rw === 'read-write');
+                const propGetters = propsWithRw.filter(p => p.rw === 'read-only' || p.rw === 'read-write');
+
+                // Designer Properties Setters Section
+                if (propSetters.length > 0) {
+                    const propSettersSection = document.createElement('div');
+                    propSettersSection.className = 'docs-section';
+                    propSettersSection.innerHTML = `
+                        <h2><kbd>Designer Property Setters:</kbd></h2>
+                        <p><strong>${info.name}</strong> has total ${propSetters.length} designer property setters.</p>
+                    `;
+
+                    propSetters.forEach((prop, idx) => {
+                        const itemDiv = this.createSetterBlockItem(prop, info.name, idx + 1);
+                        propSettersSection.appendChild(itemDiv);
+                    });
+
+                    docContainer.appendChild(propSettersSection);
+                }
+
+                // Designer Properties Getters Section
+                if (propGetters.length > 0) {
+                    const propGettersSection = document.createElement('div');
+                    propGettersSection.className = 'docs-section';
+                    propGettersSection.innerHTML = `
+                        <h2><kbd>Designer Property Getters:</kbd></h2>
+                        <p><strong>${info.name}</strong> has total ${propGetters.length} designer property getters.</p>
+                    `;
+
+                    propGetters.forEach((prop, idx) => {
+                        const itemDiv = this.createGetterBlockItem(prop, info.name, idx + 1);
+                        propGettersSection.appendChild(itemDiv);
+                    });
+
+                    docContainer.appendChild(propGettersSection);
+                }
             }
 
             // Footer
@@ -231,23 +300,31 @@ export class MarkdownDocsPage extends View {
             if (svg && theme[type]) {
                 const colors = theme[type];
 
-                // Update main paths
-                const paths = svg.querySelectorAll('path.blocklyPath, path.blocklyPathLight, path.blocklyPathDark');
+                // Find the main block group
+                const rootBlock = svg.querySelector('.blocklyBlockCanvas > .blocklyDraggable') || svg.querySelector('.blocklyDraggable');
+                if (!rootBlock) return;
+
+                // Update main paths - ONLY direct children of the root block
+                // ensuring we don't theme connected helper blocks or inputs
+                const paths = Array.from(rootBlock.children).filter(el =>
+                    el.tagName === 'path' &&
+                    (el.classList.contains('blocklyPath') ||
+                        el.classList.contains('blocklyPathLight') ||
+                        el.classList.contains('blocklyPathDark'))
+                );
+
                 paths.forEach(path => {
                     if (path.classList.contains('blocklyPath')) {
                         path.style.fill = colors.fill;
                         path.style.stroke = colors.stroke;
                     } else if (path.classList.contains('blocklyPathLight')) {
-                        path.style.fill = 'none'; // Commonly used for highlights, often clearer if transparent or lighter
+                        path.style.fill = 'none'; // Commonly used for highlights
                         path.style.stroke = 'rgba(255,255,255,0.3)';
                     } else if (path.classList.contains('blocklyPathDark')) {
                         path.style.fill = 'none';
                         path.style.stroke = 'rgba(0,0,0,0.2)';
                     }
                 });
-
-                // Handle Property blocks (Getters/Setters) specifically if needed
-                // They share the 'property' type in our data attribute
             }
         });
     }
@@ -268,12 +345,14 @@ export class MarkdownDocsPage extends View {
         let paramsHtml = '';
         if (item.params && item.params.length > 0) {
             paramsHtml = `
-                <table class="doc-table">
-                    <thead><tr><th>Parameter</th><th>Type</th></tr></thead>
-                    <tbody>
-                        ${item.params.map(p => `<tr><td>${p.name}</td><td><code>${p.type || 'any'}</code></td></tr>`).join('')}
-                    </tbody>
-                </table>
+                <div class="table-responsive">
+                    <table class="doc-table">
+                        <thead><tr><th>Parameter</th><th>Type</th></tr></thead>
+                        <tbody>
+                            ${item.params.map(p => `<tr><td>${p.name}</td><td><code>${p.type || 'any'}</code></td></tr>`).join('')}
+                        </tbody>
+                    </table>
+                </div>
             `;
         }
 
@@ -283,37 +362,69 @@ export class MarkdownDocsPage extends View {
             returnHtml = `<p class="docs-return">Returns: <code>${item.returnType}</code></p>`;
         }
 
+        // Create preview wrapper with inline-flex for proper alignment
+        const wrapperDiv = document.createElement('div');
+        wrapperDiv.className = 'docs-block-wrapper';
+        wrapperDiv.style.display = 'inline-flex';
+        wrapperDiv.style.alignItems = 'center';
+        wrapperDiv.style.marginBottom = '8px';
+
+        const previewDiv = document.createElement('div');
+        previewDiv.className = 'docs-block-preview docs-block-export';
+        previewDiv.setAttribute('data-block-type', type);
+        previewDiv.setAttribute('data-ext-name', componentName);
+        previewDiv.setAttribute('data-item-name', item.name);
+        previewDiv.setAttribute('data-unique-id', uniqueId);
+        const typeSuffix = type.charAt(0).toUpperCase() + type.slice(1);
+        previewDiv.setAttribute('data-export-name', `${item.name}_${typeSuffix}`);
+        this.enableKeyboardScroll(previewDiv);
+        wrapperDiv.appendChild(previewDiv);
+
+        const downloadBtn = document.createElement('button');
+        downloadBtn.className = 'docs-block-download-btn';
+        downloadBtn.title = 'Download Block PNG';
+        downloadBtn.innerHTML = '<i class="material-icons">download</i>';
+        downloadBtn.addEventListener('click', () => this.downloadBlockImage(previewDiv, `${item.name}_${typeSuffix}`, uniqueId));
+        wrapperDiv.appendChild(downloadBtn);
+
         div.innerHTML = `
             <h3><span class="num">${index}.</span> ${item.name}</h3>
             <p class="docs-description">${description}</p>
-            <div class="docs-block-wrapper">
-                <div class="docs-block-preview" data-block-type="${type}" data-ext-name="${componentName}" data-item-name="${item.name}" data-unique-id="${uniqueId}"></div>
-                <button class="docs-block-download-btn" title="Download Block PNG" data-block-name="${item.name}" data-unique-id="${uniqueId}">
-                    <i class="material-icons">download</i>
-                </button>
-            </div>
-            ${paramsHtml}
-            ${returnHtml}
         `;
+        div.appendChild(wrapperDiv);
+
+        // Add params and return info after the block
+        if (paramsHtml) {
+            const paramsDiv = document.createElement('div');
+            paramsDiv.innerHTML = paramsHtml;
+            div.appendChild(paramsDiv);
+        }
+        if (returnHtml) {
+            const returnDiv = document.createElement('div');
+            returnDiv.innerHTML = returnHtml;
+            div.appendChild(returnDiv);
+        }
 
         // Render REAL Blockly block
-        const previewDiv = div.querySelector('.docs-block-preview');
-        // Add export metadata for bulk collection
-        previewDiv.classList.add('docs-block-export');
-        const typeSuffix = type.charAt(0).toUpperCase() + type.slice(1);
-        previewDiv.setAttribute('data-export-name', `${item.name}_${typeSuffix}`);
-
         this.renderRealBlock(previewDiv, type, componentName, item);
 
-        // Add download button click handler
-        const downloadBtn = div.querySelector('.docs-block-download-btn');
-        downloadBtn.addEventListener('click', () => this.downloadBlockImage(previewDiv, `${item.name}_${typeSuffix}`, uniqueId));
+        // After rendering, adjust container width to match block width
+        requestAnimationFrame(() => {
+            const svg = previewDiv.querySelector('.blocklySvg');
+            if (svg) {
+                const blockWidth = svg.getBoundingClientRect().width;
+                if (blockWidth > 0) {
+                    wrapperDiv.style.width = (blockWidth + 50) + 'px'; // +50 for download button
+                }
+            }
+        });
 
         return div;
     }
 
     /**
      * Create a property block item with getter/setter real Blockly previews
+     * Each getter/setter is now in its own container with width matching the block
      */
     createPropertyBlockItem(prop, componentName, index) {
         const div = document.createElement('div');
@@ -353,58 +464,242 @@ export class MarkdownDocsPage extends View {
         div.innerHTML = `
             <h3><span class="num">${index}.</span> ${prop.name}</h3>
             <p class="docs-description">${description}</p>
-            <div class="docs-block-preview docs-block-preview--properties"></div>
+            <div class="docs-property-blocks-container"></div>
             ${prop.type ? `<p>Input type: <code>${prop.type}</code></p>` : ''}
             ${helperHtml}
         `;
 
-        const previewDiv = div.querySelector('.docs-block-preview');
+        const blocksContainer = div.querySelector('.docs-property-blocks-container');
 
-        // Getter block with download button
+        // Helper function to create a block with its own container
+        const createBlockContainer = (accessType, exportName) => {
+            const uniqueId = Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+
+            // Outer preview div for each block (separate row)
+            const previewDiv = document.createElement('div');
+            previewDiv.className = 'docs-block-preview docs-block-preview--property-single';
+            this.enableKeyboardScroll(previewDiv);
+            previewDiv.style.display = 'inline-flex';
+            previewDiv.style.alignItems = 'center';
+            previewDiv.style.marginBottom = '8px';
+
+            const wrapper = document.createElement('div');
+            wrapper.className = 'docs-block-wrapper docs-block-wrapper--property';
+            wrapper.style.display = 'inline-flex';
+            wrapper.style.alignItems = 'center';
+
+            const blockContainer = document.createElement('div');
+            blockContainer.className = 'docs-block-svg docs-block-export';
+            blockContainer.setAttribute('data-unique-id', uniqueId);
+            blockContainer.setAttribute('data-export-name', exportName);
+            wrapper.appendChild(blockContainer);
+
+            const downloadBtn = document.createElement('button');
+            downloadBtn.className = 'docs-block-download-btn';
+            downloadBtn.title = 'Download Block PNG';
+            downloadBtn.innerHTML = '<i class="material-icons">download</i>';
+            downloadBtn.addEventListener('click', () => this.downloadBlockImage(blockContainer, exportName, uniqueId));
+            wrapper.appendChild(downloadBtn);
+
+            previewDiv.appendChild(wrapper);
+            blocksContainer.appendChild(previewDiv);
+
+            // Render the block
+            this.renderRealBlock(blockContainer, 'property', componentName, prop, accessType);
+
+            // After rendering, adjust container width to match block width
+            requestAnimationFrame(() => {
+                const svg = blockContainer.querySelector('.blocklySvg');
+                if (svg) {
+                    const blockWidth = svg.getBoundingClientRect().width;
+                    if (blockWidth > 0) {
+                        previewDiv.style.width = (blockWidth + 50) + 'px'; // +50 for download button
+                    }
+                }
+            });
+        };
+
+        // Getter block (separate container)
         if (prop.rw !== 'write-only') {
-            const uniqueId = Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
-            const wrapper = document.createElement('div');
-            wrapper.className = 'docs-block-wrapper docs-block-wrapper--property';
-
-            const getterContainer = document.createElement('div');
-            getterContainer.className = 'docs-block-svg docs-block-export'; // Add export class
-            getterContainer.setAttribute('data-unique-id', uniqueId);
-            getterContainer.setAttribute('data-export-name', `${prop.name}_Getter`); // Add export name
-            wrapper.appendChild(getterContainer);
-
-            const downloadBtn = document.createElement('button');
-            downloadBtn.className = 'docs-block-download-btn';
-            downloadBtn.title = 'Download Block PNG';
-            downloadBtn.innerHTML = '<i class="material-icons">download</i>';
-            downloadBtn.addEventListener('click', () => this.downloadBlockImage(getterContainer, `${prop.name}_Getter`, uniqueId));
-            wrapper.appendChild(downloadBtn);
-
-            previewDiv.appendChild(wrapper);
-            this.renderRealBlock(getterContainer, 'property', componentName, prop, 'get');
+            createBlockContainer('get', `${prop.name}_Getter`);
         }
 
-        // Setter block with download button
+        // Setter block (separate container)
         if (prop.rw !== 'read-only') {
-            const uniqueId = Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
-            const wrapper = document.createElement('div');
-            wrapper.className = 'docs-block-wrapper docs-block-wrapper--property';
-
-            const setterContainer = document.createElement('div');
-            setterContainer.className = 'docs-block-svg docs-block-export'; // Add export class
-            setterContainer.setAttribute('data-unique-id', uniqueId);
-            setterContainer.setAttribute('data-export-name', `${prop.name}_Setter`); // Add export name
-            wrapper.appendChild(setterContainer);
-
-            const downloadBtn = document.createElement('button');
-            downloadBtn.className = 'docs-block-download-btn';
-            downloadBtn.title = 'Download Block PNG';
-            downloadBtn.innerHTML = '<i class="material-icons">download</i>';
-            downloadBtn.addEventListener('click', () => this.downloadBlockImage(setterContainer, `${prop.name}_Setter`, uniqueId));
-            wrapper.appendChild(downloadBtn);
-
-            previewDiv.appendChild(wrapper);
-            this.renderRealBlock(setterContainer, 'property', componentName, prop, 'set');
+            createBlockContainer('set', `${prop.name}_Setter`);
         }
+
+        return div;
+    }
+
+    /**
+     * Create a setter-only block item with description and dynamic width
+     */
+    createSetterBlockItem(prop, componentName, index) {
+        const div = document.createElement('div');
+        div.className = 'docs-block-item';
+
+        const description = prop.description ?
+            prop.description.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim() :
+            'No description available';
+
+        // Build helper info HTML
+        let helperHtml = '';
+        if (prop.helper) {
+            const helperData = prop.helper.data;
+            let helperTypeName = '';
+            let enums = [];
+
+            if (helperData && helperData.tag) {
+                helperTypeName = helperData.tag;
+            } else if (helperData && helperData.key) {
+                helperTypeName = helperData.key;
+            } else if (prop.helper.type && prop.helper.type !== 'OPTION_LIST') {
+                helperTypeName = prop.helper.type;
+            }
+
+            if (helperData && helperData.options && Array.isArray(helperData.options)) {
+                enums = helperData.options.map(opt => opt.name);
+            }
+
+            if (helperTypeName) {
+                helperHtml += `<p>Helper type: <code>${helperTypeName}</code></p>`;
+            }
+            if (enums.length > 0) {
+                helperHtml += `<p>Helper enums: ${enums.map(e => `<code>${e}</code>`).join(', ')}</p>`;
+            }
+        }
+
+        const uniqueId = Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+        const exportName = `${prop.name}_Setter`;
+
+        div.innerHTML = `
+            <h3><span class="num">${index}.</span> ${prop.name}</h3>
+            <p class="docs-description">${description}</p>
+        `;
+
+        // Create preview wrapper with inline-flex
+        const previewDiv = document.createElement('div');
+        previewDiv.className = 'docs-block-preview docs-block-preview--property-single';
+        this.enableKeyboardScroll(previewDiv);
+        previewDiv.style.display = 'inline-flex';
+        previewDiv.style.alignItems = 'center';
+        previewDiv.style.marginBottom = '8px';
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'docs-block-wrapper docs-block-wrapper--property';
+        wrapper.style.display = 'inline-flex';
+        wrapper.style.alignItems = 'center';
+
+        const blockContainer = document.createElement('div');
+        blockContainer.className = 'docs-block-svg docs-block-export';
+        blockContainer.setAttribute('data-unique-id', uniqueId);
+        blockContainer.setAttribute('data-export-name', exportName);
+        wrapper.appendChild(blockContainer);
+
+        const downloadBtn = document.createElement('button');
+        downloadBtn.className = 'docs-block-download-btn';
+        downloadBtn.title = 'Download Block PNG';
+        downloadBtn.innerHTML = '<i class="material-icons">download</i>';
+        downloadBtn.addEventListener('click', () => this.downloadBlockImage(blockContainer, exportName, uniqueId));
+        wrapper.appendChild(downloadBtn);
+
+        previewDiv.appendChild(wrapper);
+        div.appendChild(previewDiv);
+
+        // Add type and helper info
+        const infoDiv = document.createElement('div');
+        infoDiv.innerHTML = `
+            ${prop.type ? `<p>Input type: <code>${prop.type}</code></p>` : ''}
+            ${helperHtml}
+        `;
+        div.appendChild(infoDiv);
+
+        // Render the setter block
+        this.renderRealBlock(blockContainer, 'property', componentName, prop, 'set');
+
+        // After rendering, adjust container width to match block width
+        requestAnimationFrame(() => {
+            const svg = blockContainer.querySelector('.blocklySvg');
+            if (svg) {
+                const blockWidth = svg.getBoundingClientRect().width;
+                if (blockWidth > 0) {
+                    previewDiv.style.width = (blockWidth + 50) + 'px';
+                }
+            }
+        });
+
+        return div;
+    }
+
+    /**
+     * Create a getter-only block item with description and dynamic width
+     */
+    createGetterBlockItem(prop, componentName, index) {
+        const div = document.createElement('div');
+        div.className = 'docs-block-item';
+
+        const description = prop.description ?
+            prop.description.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim() :
+            'No description available';
+
+        const uniqueId = Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+        const exportName = `${prop.name}_Getter`;
+
+        div.innerHTML = `
+            <h3><span class="num">${index}.</span> ${prop.name}</h3>
+            <p class="docs-description">${description}</p>
+        `;
+
+        // Create preview wrapper with inline-flex
+        const previewDiv = document.createElement('div');
+        previewDiv.className = 'docs-block-preview docs-block-preview--property-single';
+        this.enableKeyboardScroll(previewDiv);
+        previewDiv.style.display = 'inline-flex';
+        previewDiv.style.alignItems = 'center';
+        previewDiv.style.marginBottom = '8px';
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'docs-block-wrapper docs-block-wrapper--property';
+        wrapper.style.display = 'inline-flex';
+        wrapper.style.alignItems = 'center';
+
+        const blockContainer = document.createElement('div');
+        blockContainer.className = 'docs-block-svg docs-block-export';
+        blockContainer.setAttribute('data-unique-id', uniqueId);
+        blockContainer.setAttribute('data-export-name', exportName);
+        wrapper.appendChild(blockContainer);
+
+        const downloadBtn = document.createElement('button');
+        downloadBtn.className = 'docs-block-download-btn';
+        downloadBtn.title = 'Download Block PNG';
+        downloadBtn.innerHTML = '<i class="material-icons">download</i>';
+        downloadBtn.addEventListener('click', () => this.downloadBlockImage(blockContainer, exportName, uniqueId));
+        wrapper.appendChild(downloadBtn);
+
+        previewDiv.appendChild(wrapper);
+        div.appendChild(previewDiv);
+
+        // Add return type info
+        const infoDiv = document.createElement('div');
+        infoDiv.innerHTML = `
+            ${prop.type ? `<p>Return type: <code>${prop.type}</code></p>` : ''}
+        `;
+        div.appendChild(infoDiv);
+
+        // Render the getter block
+        this.renderRealBlock(blockContainer, 'property', componentName, prop, 'get');
+
+        // After rendering, adjust container width to match block width
+        requestAnimationFrame(() => {
+            const svg = blockContainer.querySelector('.blocklySvg');
+            if (svg) {
+                const blockWidth = svg.getBoundingClientRect().width;
+                if (blockWidth > 0) {
+                    previewDiv.style.width = (blockWidth + 50) + 'px';
+                }
+            }
+        });
 
         return div;
     }

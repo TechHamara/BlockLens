@@ -11,7 +11,7 @@ import { ExtensionDocsPage } from './extension_docs_page.js';
 import { MarkdownDocsPage } from './markdown_docs_page.js';
 
 // App Version - Update this when releasing new versions
-const APP_VERSION = 'v1.0.0';
+const APP_VERSION = 'v1.1.0';
 
 export class Screen extends View {
     constructor() {

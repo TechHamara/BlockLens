@@ -1,5 +1,5 @@
 # 🚀 BlockLens - Advanced AIA Viewer & AIX Analyzer
-![Version](https://img.shields.io/badge/Version-1.0.0-blue?style=flat-square)
+![Version](https://img.shields.io/badge/Version-1.1.0-blue?style=flat-square)
 
 **Hello Community!** 👋
 
@@ -15,7 +15,8 @@ This tool is built upon the original [ai-unchive](https://github.com/Kodular/ai-
 1. **View AIA Projects**: Explore screens, blocks, and assets of any `.aia` file.
 2. **Analyze AIX Extensions**: Drag & drop an `.aix` file to see all its internals (methods, events, properties).
 3. **Generate Documentation**: Auto-generate beautiful Markdown documentation for your extensions.
-4. **Export Blocks**: Download high-quality PNGs of your blocks for tutorials or documentation.
+4. **Helper Block Support**: View complex property configurations with visualized dropdowns and asset pickers.
+5. **Export Blocks**: Download high-quality PNGs of your blocks for tutorials or documentation.
 
 ---
 
@@ -24,6 +25,7 @@ This tool is built upon the original [ai-unchive](https://github.com/Kodular/ai-
 ### 1. 📂 Project Viewer (AIA)
 - **Screen Explorer**: Navigate through all screens in your project.
 - **Block Viewer**: View all your logic blocks with high-fidelity rendering (uses MIT App Inventor Blockly).
+- **Mobile Responsive**: Fully optimized for mobile devices with touch support.
 - **Asset Manager**: Organize and preview project assets.
 - **Export Blocks**: Download high-quality PNGs of Separate blocks for tutorials or documentation.
 - **Page Layout**: View all your page layouts in List View and Grid View.
@@ -40,8 +42,23 @@ Stop guessing what an extension does! Upload the `.aix` via BlockLens and see:
 ### 3. 📝 Documentation Generator (For Developers)
 Extension developers, this is for you!
 - **One-Click Docs**: Generate a full `README.md` ready for GitHub.
+- **Helper Blocks**: Includes visual representations of dropdown options and asset pickers.
 - **Block Images**: Automatically generates and zips PNG images of all your blocks.
 - **Preview vs Raw**: Toggle between a rendered preview and raw Markdown code.
+
+---
+
+## 🆕 What's New in v1.1.0?
+- **Detailed Helper Loading**: Now supports rendering helper blocks (dropdowns) within the documentation preview.
+- **Professional UI**: Enhanced "Download Summary" button and custom scrollbars for a premium feel.
+- **Mobile Ready**: Fixed layout issues for seamless use on smartphones and tablets.
+- **High-Res Export**: Improved PNG export quality for blocks.
+- **AIA Png Export**: Download full documentation (Project Summary + Blocks Images) as a ZIP file
+
+## Bug Fixes
+- Summary Download Button working properly(Download full documentation (Project Summary + Blocks Images) as a ZIP file)
+- Fixed issue where some blocks were not rendering correctly in the documentation.
+- Resolved mobile overflow issues in documentation tables.
 
 ---
 

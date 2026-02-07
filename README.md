@@ -12,7 +12,7 @@
   <a href="https://techhamara.github.io/BlockLens/">
     <img src="https://img.shields.io/badge/Live%20Demo-Visit%20Website-6200EA?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Live Demo">
   </a>
-  <img src="https://img.shields.io/badge/Version-1.0.0-blue?style=for-the-badge" alt="Version 1.0.0">
+  <img src="https://img.shields.io/badge/Version-1.1.0-blue?style=for-the-badge" alt="Version 1.1.0">
   <img src="https://img.shields.io/badge/Built%20With-Vanilla%20JS-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black" alt="Built with Vanilla JS">
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="MIT License">
 </p>
@@ -171,8 +171,30 @@ We welcome contributions from the community! Here's how you can help:
 
 ## 📋 Changelog
 
-### Latest Updates
-- ✅ Version 1.0.0 Added 
+### Helper Support
+- ✅ **Dynamic Dropdowns**: Automatically renders helper blocks for properties like `AlignHorizontal`, `ScreenOrientation`, etc.
+- ✅ **Asset Picker**: Visual asset selection blocks in documentation.
+
+## 📋 Changelog
+
+### Version 1.1.0 (Latest)
+#### 🆕 New Features
+- **Helper Blocks**: Added full support for rendering helper blocks (dropdowns, asset pickers) in documentation.
+- **Professional UI**: Revamped "Download Summary" button with modern gradient styling.
+- **AIA Png Export**: Download full documentation (Project Summary + Blocks Images) as a ZIP file
+
+#### 💅 UX Improvements
+- **Scrollbars**: Added custom, high-contrast scrollbars for better visibility on both blocks and markdown pages.
+- **Mobile Responsive**: Fixed Markdown documentation layout for mobile devices (padding, font sizes, table scrolling).
+- **Keyboard Navigation**: Added arrow key support for scrolling through block previews.
+
+#### 🐛 Bug Fixes
+- Fixed issue where some blocks were not rendering correctly in the documentation.
+- Resolved mobile overflow issues in documentation tables.
+- Summary Download Button working properly(Download full documentation (Project Summary + Blocks Images) as a ZIP file)
+
+### Version 1.0.0
+- Initial Release 
 
 ---
 

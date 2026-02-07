@@ -130,7 +130,9 @@ export class Downloader {
                             reader = new window.zip.BlobReader(textBlob);
                         }
                         await new Promise((res, rej) => {
-                            writer.add(file.name, reader, res, rej);
+                            // writer.add(name, reader, onend, onprogress, options)
+                            // We do not want to pass rej as onprogress!
+                            writer.add(file.name, reader, res);
                         });
                     }
                     writer.close((blob) => {

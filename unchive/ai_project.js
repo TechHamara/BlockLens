@@ -277,14 +277,33 @@ export class BlocklyWorkspace {
 
     populateOptionLists() {
         // Collect all available option lists from built-in components and extensions
+
+        const processHelper = (helper) => {
+            if (helper && helper.data) {
+                const key = helper.data.key || helper.data.tag;
+                if (key) {
+                    this.optionLists[key] = helper.data;
+                }
+            }
+        };
+
         const processProps = (props) => {
             if (!props) return;
-            props.forEach(prop => {
-                if (prop.helper && prop.helper.data) {
-                    const key = prop.helper.data.key || prop.helper.data.tag;
-                    if (key) {
-                        this.optionLists[key] = prop.helper.data;
-                    }
+            props.forEach(prop => processHelper(prop.helper));
+        };
+
+        // Also scan method parameters for helpers
+        const processMethods = (methods) => {
+            if (!methods) return;
+            methods.forEach(method => {
+                // Check method return type helper
+                processHelper(method.helper);
+                // Check each param for helper
+                if (method.params) {
+                    method.params.forEach(param => processHelper(param.helper));
+                }
+                if (method.parameters) {
+                    method.parameters.forEach(param => processHelper(param.helper));
                 }
             });
         };
@@ -294,15 +313,19 @@ export class BlocklyWorkspace {
             AIProject.descriptorJSON.forEach(desc => {
                 processProps(desc.properties);
                 processProps(desc.blockProperties);
+                processMethods(desc.methods);
             });
         }
 
         // Scan extensions
-        if (RootPanel.project && RootPanel.project.extensions) {
-            RootPanel.project.extensions.forEach(ext => {
+        // Scan extensions
+        const project = this.project || RootPanel.project;
+        if (project && project.extensions) {
+            project.extensions.forEach(ext => {
                 if (ext.descriptorJSON) {
                     processProps(ext.descriptorJSON.properties);
                     processProps(ext.descriptorJSON.blockProperties);
+                    processMethods(ext.descriptorJSON.methods);
                 }
             });
         }
@@ -314,11 +337,16 @@ export class BlocklyWorkspace {
             ? AI.Blockly.FieldInvalidDropdown
             : Blockly.FieldDropdown;
 
+        // Ensure the helper color constant is defined (red color)
+        if (!Blockly.COLOUR_HELPERS) {
+            Blockly.COLOUR_HELPERS = '#BF4343';
+        }
+
         // 1. helpers_dropdown
         if (!Blockly.Blocks['helpers_dropdown']) {
             Blockly.Blocks['helpers_dropdown'] = {
                 init: function () {
-                    this.setColour("#BF4343");
+                    this.setColour(Blockly.COLOUR_HELPERS);  // Red color for helper blocks
                     this.appendDummyInput()
                         .appendField(new FieldInvalidDropdown([['', '']]), 'OPTION');
                     this.setOutput(true);
@@ -329,6 +357,9 @@ export class BlocklyWorkspace {
                     return mutation;
                 },
                 domToMutation: function (xml) {
+                    // Force helper color to red (in case inherited from parent)
+                    this.setColour(Blockly.COLOUR_HELPERS);
+
                     this.key_ = xml.getAttribute('key');
                     const value = xml.getAttribute('value');
 
@@ -589,7 +620,31 @@ export class BlocklyWorkspace {
             getInternationalizedOptionListTag: (name) => name,
 
             // Option lists
-            getOptionList: (key) => this.optionLists[key],
+            optionLists_: (() => {
+                const opts = {};
+                if (this.optionLists) {
+                    for (const key in this.optionLists) {
+                        const data = this.optionLists[key];
+                        opts[key] = {
+                            className: data.className,
+                            tag: data.tag || key,
+                            defaultOpt: data.defaultOpt,
+                            underlyingType: data.underlyingType,
+                            options: (data.options || []).map(opt => ({
+                                name: opt.name,
+                                value: opt.value,
+                                description: opt.description,
+                                deprecated: opt.deprecated === 'true' || opt.deprecated === true
+                            }))
+                        };
+                    }
+                }
+                return opts;
+            })(),
+
+            getOptionList: function (key) {
+                return this.optionLists_[key];
+            },
             forEachOptionList: () => { },
 
             // Instance iteration (empty - we don't have real instances)
