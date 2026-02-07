@@ -292,40 +292,37 @@ export class MarkdownDocsPage extends View {
         if (!theme) return;
 
         const containers = this.previewArea.domElement.querySelectorAll('.docs-block-preview');
+        console.log(`Applying theme '${themeName}' to ${containers.length} containers`);
 
         containers.forEach(container => {
             const type = container.getAttribute('data-block-type');
+            if (!type || !theme[type]) return;
+
+            const colors = theme[type];
             const svg = container.querySelector('svg');
+            if (!svg) return;
 
-            if (svg && theme[type]) {
-                const colors = theme[type];
+            // Apply to all paths inside the SVG
+            // This is a more aggressive approach to ensure theming works
+            const allPaths = svg.querySelectorAll('.blocklyPath, .blocklyPathLight, .blocklyPathDark');
 
-                // Find the main block group
-                const rootBlock = svg.querySelector('.blocklyBlockCanvas > .blocklyDraggable') || svg.querySelector('.blocklyDraggable');
-                if (!rootBlock) return;
+            allPaths.forEach(path => {
+                // Skip helper blocks if possible - helper blocks usually have specific structure
+                // But for now, let's just color everything to verify it works
 
-                // Update main paths - ONLY direct children of the root block
-                // ensuring we don't theme connected helper blocks or inputs
-                const paths = Array.from(rootBlock.children).filter(el =>
-                    el.tagName === 'path' &&
-                    (el.classList.contains('blocklyPath') ||
-                        el.classList.contains('blocklyPathLight') ||
-                        el.classList.contains('blocklyPathDark'))
-                );
+                if (path.classList.contains('blocklyPath')) {
+                    path.style.setProperty('fill', colors.fill, 'important');
+                    path.style.setProperty('stroke', colors.stroke, 'important');
+                } else if (path.classList.contains('blocklyPathLight')) {
+                    path.style.setProperty('fill', 'none', 'important');
+                    path.style.setProperty('stroke', 'rgba(255,255,255,0.3)', 'important');
+                } else if (path.classList.contains('blocklyPathDark')) {
+                    path.style.setProperty('fill', 'none', 'important');
+                    path.style.setProperty('stroke', 'rgba(0,0,0,0.2)', 'important');
+                }
+            });
 
-                paths.forEach(path => {
-                    if (path.classList.contains('blocklyPath')) {
-                        path.style.fill = colors.fill;
-                        path.style.stroke = colors.stroke;
-                    } else if (path.classList.contains('blocklyPathLight')) {
-                        path.style.fill = 'none'; // Commonly used for highlights
-                        path.style.stroke = 'rgba(255,255,255,0.3)';
-                    } else if (path.classList.contains('blocklyPathDark')) {
-                        path.style.fill = 'none';
-                        path.style.stroke = 'rgba(0,0,0,0.2)';
-                    }
-                });
-            }
+            // Handle text color? Usually white or black but let's stick to paths for now
         });
     }
 
@@ -478,6 +475,7 @@ export class MarkdownDocsPage extends View {
             // Outer preview div for each block (separate row)
             const previewDiv = document.createElement('div');
             previewDiv.className = 'docs-block-preview docs-block-preview--property-single';
+            previewDiv.setAttribute('data-block-type', 'property');
             this.enableKeyboardScroll(previewDiv);
             previewDiv.style.display = 'inline-flex';
             previewDiv.style.alignItems = 'center';
@@ -581,6 +579,7 @@ export class MarkdownDocsPage extends View {
         // Create preview wrapper with inline-flex
         const previewDiv = document.createElement('div');
         previewDiv.className = 'docs-block-preview docs-block-preview--property-single';
+        previewDiv.setAttribute('data-block-type', 'property');
         this.enableKeyboardScroll(previewDiv);
         previewDiv.style.display = 'inline-flex';
         previewDiv.style.alignItems = 'center';
@@ -654,6 +653,7 @@ export class MarkdownDocsPage extends View {
         // Create preview wrapper with inline-flex
         const previewDiv = document.createElement('div');
         previewDiv.className = 'docs-block-preview docs-block-preview--property-single';
+        previewDiv.setAttribute('data-block-type', 'property');
         this.enableKeyboardScroll(previewDiv);
         previewDiv.style.display = 'inline-flex';
         previewDiv.style.alignItems = 'center';
