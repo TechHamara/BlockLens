@@ -269,7 +269,7 @@ export class MarkdownDocsPage extends View {
             footer.innerHTML = `
                 <hr>
                 <div style="text-align: center;">
-                    <p>📄 <strong>Documentation generated with</strong> <a href="https://techhamara.github.io/ai-unchive/" target="_blank">BlockLens</a></p>
+                    <p>📄 <strong>Documentation generated with</strong> <a href="https://techhamara.github.io/BlockLens/" target="_blank">BlockLens</a></p>
                     <p><sub>🛠️ Built for MIT App Inventor 2 & its distributions</sub></p>
                 </div>
             `;
