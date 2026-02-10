@@ -257,7 +257,7 @@ export class ExtensionViewer {
         lines.push('<div align="center">');
         lines.push('<br>');
         lines.push('<p>');
-        lines.push('📄 <strong>Documentation generated with</strong> <a href="https://techhamara.github.io/ai-unchive/" target="_blank">ai-unchive</a>');
+        lines.push('📄 <strong>Documentation generated with</strong> <a href="https://techhamara.github.io/BlockLens/" target="_blank">ai-unchive</a>');
         lines.push('</p>');
         lines.push('<p>');
         lines.push('<sub>🛠️ Built for MIT App Inventor 2 & its distributions</sub>');
