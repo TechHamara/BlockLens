@@ -7,6 +7,7 @@ import { Label, Button, Dialog, Downloader, Dropdown, DropdownItem } from './wid
 import { ExtensionViewer, MockBlockRenderer } from '../unchive/extension_viewer.js';
 import { BlocklyBlockRenderer } from './blockly_block_renderer.js';
 import { AIProject, BlocklyWorkspace } from '../unchive/ai_project.js';
+import { ImageCompressor } from './image_compressor.js';
 /**
  * MarkdownDocsPage - Documentation page with Preview/Raw toggle
  * Similar to docGen2.html reference design
@@ -30,19 +31,22 @@ export class MarkdownDocsPage extends View {
     static get THEMES() {
         return {
             'App Inventor': {
-                event: { fill: '#B19E3E', stroke: '#8E7E32' }, // Goldish
-                method: { fill: '#804080', stroke: '#663366' }, // Purple
-                property: { fill: '#2F6D38', stroke: '#26572D' } // Green
+                // Classic AI2 Colors
+                event: { fill: '#b18e35', stroke: '#B38520' },    // AI2 Component Mustard/Gold
+                method: { fill: '#7c5385', stroke: '#6421B3' },   // AI2 Component Purple
+                property: { fill: '#266643', stroke: '#23803C' }  // AI2 Component Green
             },
             'Kodular': {
-                event: { fill: '#E0AB16', stroke: '#B38812' }, // Darker Yellow
-                method: { fill: '#8E24AA', stroke: '#721D88' }, // Deep Purple
-                property: { fill: '#009688', stroke: '#00786D' } // Teal
+                // Kodular's slightly muted, modern pastel-material palette
+                event: { fill: '#ffa726', stroke: '#B87322' },    // Kodular Amber/Orange
+                method: { fill: '#5e35b1', stroke: '#624188' },   // Kodular Soft Indigo/Purple
+                property: { fill: '#388e3c', stroke: '#318548' }  // Kodular Teal-ish Green
             },
             'Niotron': {
-                event: { fill: '#FBC02D', stroke: '#C99A24' }, // Bright Yellow
-                method: { fill: '#9C27B0', stroke: '#7D1F8D' }, // Violet
-                property: { fill: '#4CAF50', stroke: '#3D8C40' } // Light Green
+                // Niotron's vibrant, high-contrast Material Design palette
+                event: { fill: '#FF9800', stroke: '#C67600' },    // Niotron Material Orange
+                method: { fill: '#9C27B0', stroke: '#7A1EA1' },   // Niotron Material Purple
+                property: { fill: '#4CAF50', stroke: '#388E3C' }  // Niotron Material Green
             }
         };
     }
@@ -128,6 +132,7 @@ export class MarkdownDocsPage extends View {
                     <h1>🧩 ${info.name}</h1>
                     <p><strong>An extension for MIT App Inventor 2</strong></p>
                     ${info.description ? `<blockquote>${viewer.cleanDescription(info.description)}</blockquote>` : ''}
+                    ${this.extractAndRenderLinks(this.descriptor.helpString || '')}  
                 </div>
                 
                 <h2>📝 Specifications</h2>
@@ -279,54 +284,297 @@ export class MarkdownDocsPage extends View {
         }
 
         // Apply current theme to newly rendered blocks
-        this.applyTheme(this.currentTheme);
+        this.applyTheme(this.currentTheme, 50);
     }
 
     setTheme(themeName) {
+        // Normalize incoming value and guard against invalid names
+        themeName = (themeName || '').toString().trim();
+        console.log(`\n✅ ====== THEME SELECTOR ====== `);
+        console.log(`🎯 setTheme called with: '${themeName}'`);
+
+        if (!MarkdownDocsPage.THEMES[themeName]) {
+            console.warn(`Theme '${themeName}' not found, falling back to default`);
+            themeName = 'App Inventor';
+        }
+
+        // always update even if the same theme is selected so colors are reapplied
         this.currentTheme = themeName;
-        this.applyTheme(themeName);
+
+        // Update the dropdown UI (if available)
+        if (this.toolbar && this.toolbar.themeDropdown) {
+            this.toolbar.themeDropdown.setValue(themeName);
+        }
+
+        // Apply colors IMMEDIATELY
+        console.log(`\n⏱️  Applying theme now...`);
+        this.applyTheme(themeName, 0);
+        
+        // Retry after delay
+        setTimeout(() => {
+            console.log(`⏱️  Retry #1...`);
+            this.applyTheme(themeName, 0);
+        }, 150);
+
+        setTimeout(() => {
+            console.log(`⏱️  Retry #2...`);
+            this.applyTheme(themeName, 0);
+        }, 300);
     }
 
-    applyTheme(themeName) {
+    applyTheme(themeName, wait = 50) {
         const theme = MarkdownDocsPage.THEMES[themeName];
-        if (!theme) return;
+        if (!theme) {
+            console.warn(`❌ Theme '${themeName}' not found`);
+            return;
+        }
 
-        const containers = this.previewArea.domElement.querySelectorAll('.docs-block-preview');
-        console.log(`Applying theme '${themeName}' to ${containers.length} containers`);
+        console.log(`📋 applyTheme: theme=${themeName}, wait=${wait}ms`);
 
-        containers.forEach(container => {
+        if (!this.previewArea || !this.previewArea.domElement) {
+            console.warn(`❌ previewArea not available`);
+            return;
+        }
+
+        // Find containers
+        const containers = this.previewArea.domElement.querySelectorAll(`.docs-block-preview, .docs-block-export`);
+        console.log(`Found ${containers.length} containers`);
+
+        if (containers.length === 0) {
+            console.warn(`⚠️ No containers found`);
+            return;
+        }
+
+        // Process each container
+        containers.forEach((container, idx) => {
             const type = container.getAttribute('data-block-type');
-            if (!type || !theme[type]) return;
+            
+            if (!type || !theme[type]) {
+                console.warn(`Container ${idx}: type="${type}" - SKIP (not in theme)`);
+                return;
+            }
 
             const colors = theme[type];
-            const svg = container.querySelector('svg');
-            if (!svg) return;
+            console.log(`Container ${idx}: type="${type}" -> colors`);
 
-            // Find the main block group
-            const rootBlock = svg.querySelector('.blocklyBlockCanvas > .blocklyDraggable') || svg.querySelector('.blocklyDraggable');
-            if (!rootBlock) return;
-
-            // Update main paths - ONLY direct children of the root block
-            // ensuring we don't theme connected helper blocks or inputs (they keep their red color)
-            const paths = Array.from(rootBlock.children).filter(el =>
-                el.tagName === 'path' &&
-                (el.classList.contains('blocklyPath') ||
-                    el.classList.contains('blocklyPathLight') ||
-                    el.classList.contains('blocklyPathDark'))
-            );
-
-            paths.forEach(path => {
-                if (path.classList.contains('blocklyPath')) {
-                    path.style.setProperty('fill', colors.fill, 'important');
-                    path.style.setProperty('stroke', colors.stroke, 'important');
-                } else if (path.classList.contains('blocklyPathLight')) {
-                    path.style.setProperty('fill', 'none', 'important');
-                    path.style.setProperty('stroke', 'rgba(255,255,255,0.3)', 'important');
-                } else if (path.classList.contains('blocklyPathDark')) {
-                    path.style.setProperty('fill', 'none', 'important');
-                    path.style.setProperty('stroke', 'rgba(0,0,0,0.2)', 'important');
+            // Find SVG (with wait)
+            setTimeout(() => {
+                const svg = container.querySelector('svg');
+                if (!svg) {
+                    console.warn(`Container ${idx}: SVG NOT FOUND`);
+                    return;
                 }
+                
+                console.log(`Container ${idx}: SVG found! Coloring...`);
+                
+                // Step 1: Color main block FIRST
+                this.applyColorToSvg(svg, colors);
+                
+                // Step 2: Color helpers AFTER (so they override)
+                setTimeout(() => {
+                    this.applyHelperBlocksRed(svg);
+                }, 20);
+            }, wait);
+        });
+    }
+
+    /**
+     * Apply theme colors to MAIN block only
+     */
+    applyColorToSvg(svg, colors) {
+        if (!svg || !colors) {
+            console.warn('applyColorToSvg: missing svg or colors');
+            return;
+        }
+
+        try {
+            console.log('🎨 applyColorToSvg - MAIN BLOCK:', colors);
+            
+            // Get ONLY the first (main) block group
+            const mainGroup = svg.querySelector('g.blocklyDraggable');
+            if (!mainGroup) {
+                console.warn('⚠️ No main group found');
+                return;
+            }
+
+            // Color ONLY elements in main group
+            const mainElements = mainGroup.querySelectorAll('path, rect, circle, ellipse, polygon');
+            console.log(`Found ${mainElements.length} elements to color`);
+
+            let count = 0;
+            mainElements.forEach((elem) => {
+                const fill = elem.getAttribute('fill');
+                
+                // Skip white/transparent/none
+                if (!fill || fill === '#ffffff' || fill === 'white' || fill === 'none') {
+                    return;
+                }
+
+                // Don't touch red (leave for helpers)
+                if (fill === '#BF4343') {
+                    return;
+                }
+
+                // Color it
+                elem.setAttribute('fill', colors.fill);
+                elem.setAttribute('stroke', colors.stroke);
+                elem.style.fill = colors.fill + ' !important';
+                elem.style.stroke = colors.stroke + ' !important';
+                count++;
             });
+
+            console.log(`✅ Main block: colored ${count} elements`);
+
+        } catch (e) {
+            console.error('❌ Error:', e);
+        }
+    }
+
+    /**
+     * Apply RED color to HELPER blocks only (separate function)
+     * This forcefully colors ALL elements in helper blocks to red
+     */
+    applyHelperBlocksRed(svg) {
+        if (!svg) return;
+
+        try {
+            console.log('🔴 applyHelperBlocksRed - Making helpers RED');
+            
+            // Get all groups
+            const allGroups = Array.from(svg.querySelectorAll('g.blocklyDraggable'));
+            console.log(`Total groups: ${allGroups.length}`);
+            
+            if (allGroups.length <= 1) {
+                console.log('ℹ️ No helper blocks');
+                return;
+            }
+
+            const helperRed = '#BF4343';
+            let filledCount = 0;
+            let pathCount = 0;
+
+            // Color groups 1+ (helpers) - FORCEFULLY
+            for (let i = 1; i < allGroups.length; i++) {
+                const group = allGroups[i];
+                console.log(`\nProcessing group ${i} (helper)...`);
+                
+                // Get ALL elements that have any fill or stroke
+                const allElems = group.querySelectorAll('*');
+                console.log(`  Found ${allElems.length} total elements`);
+                
+                allElems.forEach((elem) => {
+                    const tag = elem.tagName.toLowerCase();
+                    
+                    // Color SVG shape elements
+                    if (['path', 'rect', 'circle', 'ellipse', 'polygon'].includes(tag)) {
+                        // FORCE set both fill and stroke
+                        elem.setAttribute('fill', helperRed);
+                        elem.setAttribute('stroke', helperRed);
+                        
+                        // FORCE via style with !important
+                        elem.style.fill = helperRed + ' !important';
+                        elem.style.stroke = helperRed + ' !important';
+                        
+                        // Also remove any other fill style attributes
+                        elem.removeAttribute('fill-opacity');
+                        
+                        filledCount++;
+                        if (['path', 'rect'].includes(tag)) {
+                            pathCount++;
+                        }
+                    }
+                });
+                
+                console.log(`  ✓ Colored ${allElems.length} elements in group ${i}`);
+            }
+
+            console.log(`\n✅ DONE: ${filledCount} total elements, ${pathCount} shapes colored RED`);
+
+        } catch (e) {
+            console.error('❌ Error in applyHelperBlocksRed:', e);
+        }
+    }
+
+    /**
+     * Darken a color by a percentage
+     */
+    darkenColor(hex, percent) {
+        try {
+            const num = parseInt(hex.replace('#', ''), 16);
+            const amt = Math.round(2.55 * percent);
+            const r = Math.max(0, (num >> 16) - amt);
+            const g = Math.max(0, (num >> 8 & 0x00FF) - amt);
+            const b = Math.max(0, (num & 0x0000FF) - amt);
+            return '#' + (0x1000000 + r * 0x10000 + g * 0x100 + b).toString(16).slice(1);
+        } catch (e) {
+            return hex; // Return original if error
+        }
+    }
+
+    /**
+     * Extract and render links from helpString HTML
+     * Converts HTML links to clickable elements
+     */
+    extractAndRenderLinks(htmlString) {
+        if (!htmlString) return '';
+
+        try {
+            // Extract all <a> tags from the HTML string
+            const linkRegex = /<a\s+href=["']([^"']+)["']\s*(?:target=["']([^"']*)["'])?\s*>\s*<small>\s*<u>([^<]+)<\/u>\s*<\/small>\s*<\/a>/gi;
+            let links = [];
+            let match;
+
+            while ((match = linkRegex.exec(htmlString)) !== null) {
+                links.push({
+                    href: match[1],
+                    target: match[2] || '_blank',
+                    text: match[3]
+                });
+            }
+
+            if (links.length === 0) return '';
+
+            // Render as a nice link section
+            let linksHtml = '<div class="docs-links-section" style="margin-top: 16px; padding: 12px; background: rgba(98, 0, 234, 0.08); border-radius: 8px; border-left: 4px solid #6200EA;">';
+            linksHtml += '<p style="margin: 0 0 8px 0; font-size: 0.9em; color: #666;"><strong>📎 Quick Links:</strong></p>';
+            linksHtml += '<div style="display: flex; gap: 12px; flex-wrap: wrap;">';
+
+            links.forEach(link => {
+                linksHtml += `<a href="${link.href}" target="${link.target}" style="display: inline-block; padding: 6px 12px; background: #6200EA; color: white; text-decoration: none; border-radius: 20px; font-size: 0.85em; transition: all 0.2s; border: none;" onmouseover="this.style.background='#5000D0'" onmouseout="this.style.background='#6200EA'">${link.text}</a>`;
+            });
+
+            linksHtml += '</div></div>';
+            return linksHtml;
+        } catch (e) {
+            console.error('Error extracting links:', e);
+            return '';
+        }
+    }
+
+    get descriptor() {
+        return this.viewers[0]?.extension?.descriptorJSON || {};
+    }
+
+    colorBlocksRecursive(element, colors) {
+        if (!element) return;
+
+        // Color this element if it's a block
+        if (element.classList && element.classList.contains('blocklyDraggable')) {
+            // Find all path elements in this block
+            const paths = element.querySelectorAll('path.blocklyPath');
+            paths.forEach(path => {
+                path.setAttribute('fill', colors.fill);
+                path.setAttribute('stroke', colors.stroke);
+                path.style.fill = colors.fill;
+                path.style.stroke = colors.stroke;
+            });
+        }
+
+        // Recursively color child blocks (but skip helper blocks)
+        Array.from(element?.children || []).forEach(child => {
+            if (child.classList && !child.classList.contains('blocklyNote')) {
+                this.colorBlocksRecursive(child, colors);
+            }
         });
     }
 
@@ -413,10 +661,14 @@ export class MarkdownDocsPage extends View {
         requestAnimationFrame(() => {
             const svg = previewDiv.querySelector('.blocklySvg');
             if (svg) {
-                const blockWidth = svg.getBoundingClientRect().width;
-                if (blockWidth > 0) {
-                    wrapperDiv.style.width = (blockWidth + 50) + 'px'; // +50 for download button
-                }
+                const isMobile = window.innerWidth <= 768;
+                const maxWidth = isMobile ? 350 : 450;
+
+                wrapperDiv.style.maxWidth = (maxWidth + 50) + 'px'; // +50 for download button
+                wrapperDiv.style.width = 'auto';
+                wrapperDiv.style.minWidth = '50px';
+                wrapperDiv.style.overflow = isMobile ? 'auto' : 'visible';
+                previewDiv.style.overflow = isMobile ? 'auto' : 'visible';
             }
         });
 
@@ -621,15 +873,14 @@ export class MarkdownDocsPage extends View {
         // Render the setter block
         this.renderRealBlock(blockContainer, 'property', componentName, prop, 'set');
 
-        // After rendering, adjust container width to match block width
+        // After rendering, adjust container width
         requestAnimationFrame(() => {
-            const svg = blockContainer.querySelector('.blocklySvg');
-            if (svg) {
-                const blockWidth = svg.getBoundingClientRect().width;
-                if (blockWidth > 0) {
-                    previewDiv.style.width = (blockWidth + 50) + 'px';
-                }
-            }
+            const isMobile = window.innerWidth <= 768;
+            const maxWidth = isMobile ? 350 : 450;
+
+            previewDiv.style.maxWidth = (maxWidth + 50) + 'px';
+            previewDiv.style.width = 'auto';
+            previewDiv.style.overflow = isMobile ? 'auto' : 'visible';
         });
 
         return div;
@@ -694,15 +945,14 @@ export class MarkdownDocsPage extends View {
         // Render the getter block
         this.renderRealBlock(blockContainer, 'property', componentName, prop, 'get');
 
-        // After rendering, adjust container width to match block width
+        // After rendering, adjust container width
         requestAnimationFrame(() => {
-            const svg = blockContainer.querySelector('.blocklySvg');
-            if (svg) {
-                const blockWidth = svg.getBoundingClientRect().width;
-                if (blockWidth > 0) {
-                    previewDiv.style.width = (blockWidth + 50) + 'px';
-                }
-            }
+            const isMobile = window.innerWidth <= 768;
+            const maxWidth = isMobile ? 350 : 450;
+
+            previewDiv.style.maxWidth = (maxWidth + 50) + 'px';
+            previewDiv.style.width = 'auto';
+            previewDiv.style.overflow = isMobile ? 'auto' : 'visible';
         });
 
         return div;
@@ -738,6 +988,20 @@ export class MarkdownDocsPage extends View {
 
             if (blockElement) {
                 container.appendChild(blockElement);
+                // Apply mobile-responsive styles to SVG
+                this.applyMobileBlockStyles(container);
+                // Apply theme colors immediately after rendering
+                setTimeout(() => {
+                    const svg = container.querySelector('svg');
+                    if (svg) {
+                        const blockType = type; // Use the type parameter, not the attribute
+                        const theme = MarkdownDocsPage.THEMES[this.currentTheme];
+                        console.log(`Coloring block: type=${blockType}, theme=${this.currentTheme}, colors=`, theme[blockType]);
+                        if (theme && blockType && theme[blockType]) {
+                            this.applyColorToSvg(svg, theme[blockType]);
+                        }
+                    }
+                }, 50);
             }
         } catch (e) {
             console.error('Error rendering real Blockly block:', e);
@@ -758,12 +1022,104 @@ export class MarkdownDocsPage extends View {
                 }
                 if (svg) {
                     container.appendChild(svg);
+                    // Apply mobile-responsive styles to SVG
+                    this.applyMobileBlockStyles(container);
+                    // Apply theme colors immediately after rendering
+                    setTimeout(() => {
+                        const renderedSvg = container.querySelector('svg');
+                        if (renderedSvg) {
+                            const blockType = type; // Use the type parameter
+                            const theme = MarkdownDocsPage.THEMES[this.currentTheme];
+                            console.log(`Coloring fallback block: type=${blockType}, theme=${this.currentTheme}, colors=`, theme[blockType]);
+                            if (theme && blockType && theme[blockType]) {
+                                this.applyColorToSvg(renderedSvg, theme[blockType]);
+                            }
+                        }
+                    }, 50);
                 }
             } catch (fallbackError) {
                 console.error('Fallback also failed:', fallbackError);
                 container.innerHTML = '<div style="color:red;padding:8px;font-size:12px;">Block unavailable</div>';
             }
         }
+    }
+
+    /**
+     * Apply mobile-responsive styles to block SVG
+     * Desktop: 350-450px width, 80-100px height, no scroll
+     * Mobile: 350px width, 80px height, horizontal scroll enabled
+     */
+    applyMobileBlockStyles(container) {
+        requestAnimationFrame(() => {
+            const svg = container.querySelector('svg');
+            if (!svg) return;
+
+            // Ensure SVG has proper namespace and attributes
+            if (!svg.getAttribute('xmlns')) {
+                svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+            }
+
+            // Get bounding box to ensure viewBox is correct
+            let bbox;
+            try {
+                bbox = svg.getBBox();
+            } catch (e) {
+                // If getBBox fails, use width/height attributes
+                bbox = {
+                    x: 0,
+                    y: 0,
+                    width: parseFloat(svg.getAttribute('width') || 100),
+                    height: parseFloat(svg.getAttribute('height') || 80)
+                };
+            }
+
+            const currentWidth = Math.max(bbox.width, parseFloat(svg.getAttribute('width') || bbox.width));
+            const currentHeight = Math.max(bbox.height, parseFloat(svg.getAttribute('height') || bbox.height));
+
+            // Set preserveAspectRatio to prevent distortion
+            svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+
+            // Set viewBox with small padding to prevent clipping
+            const padding = 4;
+            svg.setAttribute('viewBox', `${bbox.x - padding} ${bbox.y - padding} ${currentWidth + padding * 2} ${currentHeight + padding * 2}`);
+
+            // Check if mobile
+            const isMobile = window.innerWidth <= 768;
+
+            // Set constraints based on device
+            const maxWidth = isMobile ? 350 : 450;
+            const maxHeight = isMobile ? 80 : 100;
+            const minHeight = 80;
+
+            // Calculate scale to fit within constraints
+            let scale = 1;
+            let newWidth = currentWidth;
+            let newHeight = currentHeight;
+
+            if (currentWidth > maxWidth || currentHeight > maxHeight) {
+                const widthScale = maxWidth / currentWidth;
+                const heightScale = maxHeight / currentHeight;
+                scale = Math.min(widthScale, heightScale, 1);
+                newWidth = currentWidth * scale;
+                newHeight = currentHeight * scale;
+            }
+
+            // Apply styling
+            svg.setAttribute('width', Math.ceil(newWidth));
+            svg.setAttribute('height', Math.ceil(newHeight));
+
+            // Set container constraints
+            svg.style.maxWidth = maxWidth + 'px';
+            svg.style.maxHeight = maxHeight + 'px';
+            svg.style.minHeight = minHeight + 'px';
+            svg.style.width = 'auto';
+            svg.style.height = 'auto';
+            svg.style.display = 'block';
+            svg.style.overflow = isMobile ? 'auto' : 'visible';
+
+            // Ensure SVG is responsive
+            svg.classList.add('blocklySvg');
+        });
     }
 
     setViewMode(mode) {
@@ -804,92 +1160,35 @@ export class MarkdownDocsPage extends View {
     }
 
     /**
-     * Generate PNG Blob from a Block container (WYSIWYG)
+     * Generate PNG Blob from a Block container with size constraints
+     * Uses ImageCompressor utility for reliable compression
+     * MAX: 500px width × 80px height
      * @param {HTMLElement} container - Container with the block SVG
      * @returns {Promise<Blob>}
      */
-    getBlockPngBlob(container) {
+    async getBlockPngBlob(container) {
         return new Promise((resolve, reject) => {
-            const svg = container.querySelector('svg');
-            if (!svg) {
-                reject(new Error('No SVG found in container'));
-                return;
-            }
-
-            // Get SVG dimensions
-            const bbox = svg.getBBox();
-            const svgWidth = svg.getAttribute('width') || bbox.width + bbox.x + 10;
-            const svgHeight = svg.getAttribute('height') || bbox.height + bbox.y + 10;
-
-            // Add padding to prevent cropping
-            const padding = 10;
-            const totalWidth = parseFloat(svgWidth) + padding * 2;
-            const totalHeight = parseFloat(svgHeight) + padding * 2;
-
-            // Clone and prepare SVG for export with proper dimensions
-            const svgClone = svg.cloneNode(true);
-            svgClone.setAttribute('width', totalWidth);
-            svgClone.setAttribute('height', totalHeight);
-
-            // SYNC COMPUTED STYLES for WYSIWYG fidelity
-            const sourceElements = svg.querySelectorAll('*');
-            const cloneElements = svgClone.querySelectorAll('*');
-
-            for (let i = 0; i < sourceElements.length; i++) {
-                const source = sourceElements[i];
-                const clone = cloneElements[i];
-
-                if (!clone || source.tagName !== clone.tagName) continue;
-
-                const computed = window.getComputedStyle(source);
-
-                clone.style.fill = computed.fill;
-                clone.style.stroke = computed.stroke;
-                clone.style.strokeWidth = computed.strokeWidth;
-                clone.style.opacity = computed.opacity;
-                clone.style.display = computed.display;
-                clone.style.visibility = computed.visibility;
-
-                if (source.tagName === 'text' || source.tagName === 'tspan') {
-                    clone.style.fontFamily = computed.fontFamily;
-                    clone.style.fontSize = computed.fontSize;
-                    clone.style.fontWeight = computed.fontWeight;
-                    clone.style.fontStyle = computed.fontStyle;
-                    clone.style.fill = computed.fill;
+            try {
+                const svg = container.querySelector('svg');
+                if (!svg) {
+                    reject(new Error('No SVG found in container'));
+                    return;
                 }
+
+                // Use the new ImageCompressor utility
+                ImageCompressor.svgToPNG(svg)
+                    .then(blob => {
+                        resolve(blob);
+                    })
+                    .catch(error => {
+                        console.error('ImageCompressor error:', error);
+                        reject(error);
+                    });
+
+            } catch (error) {
+                console.error('Error in getBlockPngBlob:', error);
+                reject(error);
             }
-
-            // Wrap content in a group with translation for padding
-            const content = svgClone.innerHTML;
-            svgClone.innerHTML = `<g transform="translate(${padding}, ${padding})">${content}</g>`;
-
-            svgClone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-
-            const svgData = new XMLSerializer().serializeToString(svgClone);
-            const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
-            const url = URL.createObjectURL(svgBlob);
-
-            const img = new Image();
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                const scale = 2; // High resolution
-                canvas.width = totalWidth * scale;
-                canvas.height = totalHeight * scale;
-
-                const ctx = canvas.getContext('2d');
-                ctx.scale(scale, scale);
-                ctx.drawImage(img, 0, 0, totalWidth, totalHeight);
-
-                canvas.toBlob((blob) => {
-                    URL.revokeObjectURL(url);
-                    resolve(blob);
-                }, 'image/png');
-            };
-            img.onerror = (e) => {
-                URL.revokeObjectURL(url);
-                reject(new Error('Error loading SVG for PNG export'));
-            };
-            img.src = url;
         });
     }
 
@@ -948,16 +1247,20 @@ export class MarkdownDocsPage extends View {
             return;
         }
 
-        this.showToast('Generating block PNGs...');
-        return this.downloadBlocksFromArray(blocks);
+        this.showToast(`📦 Preparing ${blocks.length} blocks (max 80px×500px)...`);
+        return this.downloadBlocksFromArray(blocks, 'blocks');
     }
 
     /**
-     * Download blocks from an array
+     * Download blocks from an array with compression and size constraints
+     * @param {Array} blocks - Array of block containers to download
+     * @param {String} subfolder - Optional subfolder name for blocks in ZIP (default: root)
      */
-    async downloadBlocksFromArray(blocks) {
+    async downloadBlocksFromArray(blocks, subfolder = '') {
         const info = this.viewers[0]?.getInfo();
-        const filename = `${(info?.name || 'extension').replace(/[^a-zA-Z0-9]/g, '_')}_blocks.zip`;
+        const filename = subfolder ?
+            `${(info?.name || 'extension').replace(/[^a-zA-Z0-9]/g, '_')}_blocks.zip` :
+            `${(info?.name || 'extension').replace(/[^a-zA-Z0-9]/g, '_')}_blocks.zip`;
 
         try {
             if (!window.zip) throw new Error('ZIP library not loaded');
@@ -968,11 +1271,13 @@ export class MarkdownDocsPage extends View {
                     // Recursive function to add files sequentially
                     let index = 0;
                     const usedNames = new Set();
+                    let addedCount = 0;
 
                     const addNextFile = async () => {
                         if (index >= blocks.length) {
                             // All files added, close writer
                             writer.close((blob) => {
+                                console.log(`✅ ZIP created: ${blocks.length} blocks compressed`);
                                 Downloader.downloadBlob(blob, filename);
                                 resolve();
                             });
@@ -995,8 +1300,11 @@ export class MarkdownDocsPage extends View {
                             }
                             usedNames.add(uniqueName);
 
-                            writer.add(`${uniqueName}.png`, new window.zip.BlobReader(pngBlob), () => {
+                            const filePath = subfolder ? `${subfolder}/${uniqueName}.png` : `${uniqueName}.png`;
+                            writer.add(filePath, new window.zip.BlobReader(pngBlob), () => {
                                 // Success callback
+                                addedCount++;
+                                console.log(`  ✓ Added ${filePath} (${addedCount}/${blocks.length})`);
                                 addNextFile();
                             });
                         } catch (e) {
@@ -1014,22 +1322,23 @@ export class MarkdownDocsPage extends View {
                 });
             });
 
-            this.showToast(`Downloaded ${blocks.length} blocks!`);
+            this.showToast(`✅ Downloaded ${blocks.length} blocks (compressed ZIP)!`);
         } catch (error) {
             console.error('Error downloading blocks:', error);
             const errorMessage = error.message || error.toString() || 'Unknown error';
             new Dialog('Export Error', 'Failed to export blocks: ' + errorMessage).open();
+            this.showToast('❌ Download failed');
         }
     }
 
     /**
-     * Download full documentation with markdown and block PNGs
+     * Download full documentation with markdown and block PNGs (compressed ZIP)
      */
     async downloadFullDocumentation() {
         // Collect rendered blocks
         const blocks = this.collectRenderedBlockSVGs();
 
-        this.showToast('Generating full documentation...');
+        this.showToast(`📄 Preparing documentation with ${blocks.length} blocks (max 80px×500px)...`);
 
         const info = this.viewers[0]?.getInfo();
         const filename = `${(info?.name || 'extension').replace(/[^a-zA-Z0-9]/g, '_')}_full_docs.zip`;
@@ -1047,15 +1356,18 @@ export class MarkdownDocsPage extends View {
                     // Add markdown file first
                     const mdBlob = new Blob([markdownWithImages], { type: 'text/markdown;charset=utf-8' });
 
+                    console.log('Adding documentation.md');
                     writer.add('documentation.md', new window.zip.BlobReader(mdBlob), () => {
 
                         // Then add blocks
                         let index = 0;
                         const usedNames = new Set();
+                        let addedCount = 1; // Start at 1 for the markdown file
 
                         const addNextFile = async () => {
                             if (index >= blocks.length) {
                                 writer.close((blob) => {
+                                    console.log(`✅ ZIP created: documentation.md + ${blocks.length} blocks compressed`);
                                     Downloader.downloadBlob(blob, filename);
                                     resolve();
                                 });
@@ -1078,28 +1390,34 @@ export class MarkdownDocsPage extends View {
                                 }
                                 usedNames.add(uniqueName);
 
-                                writer.add(`blocks/${uniqueName}.png`, new window.zip.BlobReader(pngBlob), () => {
+                                const filePath = `blocks/${uniqueName}.png`;
+                                writer.add(filePath, new window.zip.BlobReader(pngBlob), () => {
+                                    addedCount++;
+                                    console.log(`  ✓ Added ${filePath} (${addedCount}/${blocks.length + 1})`);
                                     addNextFile();
                                 });
                             } catch (e) {
                                 console.error(`Error adding block ${block.name}:`, e);
+                                // Skip failed block and continue
                                 addNextFile();
                             }
                         };
 
+                        // Start adding block files
                         addNextFile();
-                    });
 
+                    });
                 }, (err) => {
                     reject(err);
                 });
             });
 
-            this.showToast(`Downloaded documentation with ${blocks.length} blocks!`);
+            this.showToast(`✅ Downloaded docs with ${blocks.length} blocks (compressed ZIP)!`);
         } catch (error) {
-            console.error('Error downloading full docs:', error);
+            console.error('Error downloading documentation:', error);
             const errorMessage = error.message || error.toString() || 'Unknown error';
-            new Dialog('Export Error', 'Failed to export full documentation: ' + errorMessage).open();
+            new Dialog('Export Error', 'Failed to export documentation: ' + errorMessage).open();
+            this.showToast('❌ Download failed');
         }
     }
 
@@ -1212,12 +1530,15 @@ class DocsToolbar extends View {
 
         this.themeDropdown = new Dropdown(
             this.page.currentTheme,
-            (e) => this.page.setTheme(e.target.value)
+            (e) => {
+                // trim whitespace just in case
+                const val = (e.target.value || '').toString().trim();
+                this.page.setTheme(val);
+            }
         );
 
         Object.keys(MarkdownDocsPage.THEMES).forEach(themeName => {
-            const item = new DropdownItem(themeName);
-            item.domElement.value = themeName;
+            const item = new DropdownItem(themeName, themeName);
             this.themeDropdown.addDropdownItem(item);
         });
 

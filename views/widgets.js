@@ -85,9 +85,10 @@ export class Dropdown extends View {
 }
 
 export class DropdownItem extends View {
-    constructor(text) {
+    constructor(text, value = null) {
         super('OPTION');
         this.domElement.innerHTML = text;
+        this.domElement.value = value || text;
         this.addStyleName('blocklens-dropdown-item');
     }
 }

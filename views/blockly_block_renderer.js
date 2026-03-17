@@ -57,6 +57,75 @@ export class BlocklyBlockRenderer {
         this.registerDescriptor();
     }
 
+    /**
+     * Diagnostic helper: create one sample block (method/event/getter/setter) for each
+     * component descriptor in AIProject.descriptorJSON and append to the document.
+     * Also logs any failures so missing block definitions are easy to spot.
+     * Intended to be invoked from console during development (e.g. `BlocklyBlockRenderer.verifyAll();`).
+     */
+    static verifyAll() {
+        const descriptors = AIProject.descriptorJSON || [];
+        const container = document.createElement('div');
+        container.style.display = 'grid';
+        container.style.gridTemplateColumns = 'repeat(auto-fill, minmax(200px, 1fr))';
+        container.style.gap = '12px';
+        container.style.padding = '12px';
+        container.style.background = '#f9f9f9';
+        container.id = 'component-verification-container';
+        document.body.appendChild(container);
+
+        let failures = [];
+
+        descriptors.forEach(desc => {
+            try {
+                const short = desc.type.split('.').pop();
+                const renderer = new BlocklyBlockRenderer(desc);
+                // pick one sample from event/method/property
+                let svg;
+                if (desc.events && desc.events.length) {
+                    svg = renderer.createEventBlock(desc.events[0], short);
+                } else if (desc.methods && desc.methods.length) {
+                    svg = renderer.createMethodBlock(desc.methods[0], short);
+                } else if (desc.blockProperties && desc.blockProperties.length) {
+                    // create getter or setter
+                    const prop = desc.blockProperties[0];
+                    if (prop.rw === 'read-only' || prop.rw === 'read-write') {
+                        svg = renderer.createPropertyGetterBlock(prop, short);
+                    } else {
+                        svg = renderer.createPropertySetterBlock(prop, short);
+                    }
+                } else {
+                    // nothing to render? create generic component block
+                    svg = renderer.createComponentBlock(short);
+                }
+                if (!svg || !(svg instanceof SVGElement)) {
+                    throw new Error('no svg');
+                }
+                const wrapper = document.createElement('div');
+                wrapper.style.border = '1px solid #ccc';
+                wrapper.style.padding = '6px';
+                wrapper.style.textAlign = 'center';
+                wrapper.style.background = '#fff';
+                const label = document.createElement('div');
+                label.textContent = short;
+                label.style.fontSize = '10px';
+                label.style.marginBottom = '4px';
+                wrapper.appendChild(label);
+                wrapper.appendChild(svg);
+                container.appendChild(wrapper);
+            } catch (e) {
+                failures.push(desc.type);
+                console.error('Verification failed for', desc.type, e);
+            }
+        });
+
+        if (failures.length) {
+            console.warn('Component verification failures:', failures);
+        } else {
+            console.log('All components rendered a sample block successfully.');
+        }
+    }
+
     defineHelperBlocks() {
         // Override helpers_dropdown with a simpler version that works for documentation rendering
         // The official block from lib/blockly/blocks/helpers.js requires full AI infrastructure

@@ -14,11 +14,21 @@
     --border: #E5E7EB;
     --shadow: rgba(0, 0, 0, 0.08);
 
-    /* Block colors */
+    /* Block colors - App Inventor defaults */
     --block-event: #9E7D15;
     --block-method: #6A5ACD;
-    --block-property: #4CAF50;
+    --block-property: #2F6D38;
     --block-helper: #FF5722;
+    
+    /* Kodular theme colors */
+    --color-kodular-event: #E0AB16;
+    --color-kodular-method: #8E24AA;
+    --color-kodular-property: #009688;
+    
+    /* Niotron theme colors */
+    --color-niotron-event: #FFC107;
+    --color-niotron-method: #9C27B0;
+    --color-niotron-property: #4CAF50;
 }
 
 /* Dark Mode */
@@ -1346,8 +1356,8 @@ body.dark-mode .doc-table code {
 }
 
 .docs-block-item {
-    margin: 20px 0;
-    padding: 16px;
+    margin: 16px 0;
+    padding: 12px;
     background: var(--bg);
     border-radius: 12px;
     border: 1px solid var(--border);
@@ -1360,9 +1370,10 @@ body.dark-mode .doc-table code {
 }
 
 .docs-block-item h3 {
-    margin: 0 0 8px 0;
-    font-size: 1.1em;
+    margin: 0 0 6px 0;
+    font-size: 1.05em;
     color: var(--text);
+    word-break: break-word;
 }
 
 .docs-block-item h3 .num {
@@ -1372,33 +1383,54 @@ body.dark-mode .doc-table code {
 
 .docs-description {
     color: var(--text-secondary);
-    font-size: 0.95em;
-    margin-bottom: 12px;
+    font-size: 0.93em;
+    margin-bottom: 10px;
+    line-height: 1.4;
 }
 
 .docs-block-preview {
     background: #f8f9fa;
     border-radius: 8px;
-    padding: 16px;
-    margin: 12px 0;
+    padding: 8px;
+    margin: 10px 0;
     overflow-x: auto;
-    width: 100%;
+    overflow-y: hidden;
+    width: auto;
+    max-width: 100%;
+    min-height: 80px;
+    max-height: 100px;
     border: 1px solid var(--border);
-    /* Ensure flex children don't shrink below content width */
     display: flex;
     flex-direction: column;
     align-items: flex-start;
+    -webkit-overflow-scrolling: touch;
 }
 
 .docs-block-preview--properties {
     display: flex;
     flex-direction: column;
-    gap: 24px;
+    gap: 20px;
     align-items: flex-start;
+    width: 100%;
+}
+
+.docs-block-preview--property-single {
+    display: inline-flex;
+    align-items: center;
+    width: auto;
+    max-width: 100%;
+    margin-bottom: 8px;
+    min-height: 80px;
+    max-height: 100px;
+    overflow-x: auto;
+    overflow-y: hidden;
 }
 
 .docs-block-svg {
     display: inline-block;
+    max-width: 100%;
+    height: auto;
+    flex-shrink: 0;
 }
 
 .docs-return {
@@ -1760,6 +1792,51 @@ body.dark-mode .docs-return code {
     .extension-stats-bar {
         grid-template-columns: 1fr 1fr;
     }
+
+    /* Markdown Docs Page Mobile Styles */
+    .markdown-docs-page {
+        padding: 0;
+    }
+
+    .markdown-docs-page .docs-block-preview {
+        padding: 6px;
+        min-height: 80px;
+        max-height: 80px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .markdown-docs-page .blocklySvg {
+        max-height: 80px !important;
+        min-height: 80px !important;
+        max-width: 350px;
+    }
+
+    .markdown-docs-page .docs-block-wrapper {
+        max-height: 90px;
+        max-width: 400px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .docs-block-item {
+        margin: 12px 0;
+        padding: 8px;
+    }
+
+    .markdown-docs-page .docs-extension-container {
+        padding: 10px;
+    }
+
+    .markdown-docs-page .docs-section {
+        padding: 6px 0;
+    }
+
+    .markdown-docs-page .docs-section h2 {
+        font-size: 1.1em;
+        margin: 6px 0;
+    }
 }
 
 /* ==========================================
@@ -1866,23 +1943,27 @@ body.dark-mode .blocklens-block-node__preview {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 24px;
-    height: 64px;
+    padding: 0 16px;
+    height: 56px;
     background: var(--surface);
     border-bottom: 1px solid var(--border);
     box-shadow: 0 2px 8px var(--shadow);
+    gap: 8px;
 }
 
 .markdown-docs-header__left {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 12px;
+    min-width: 0;
+    flex: 1;
 }
 
 .markdown-docs-header__back {
     background: var(--bg);
     border-radius: 12px;
     color: var(--text);
+    flex-shrink: 0;
     /* ensure invalidation */
 }
 
@@ -1895,10 +1976,14 @@ body.dark-mode .blocklens-block-node__preview {
 }
 
 .markdown-docs-header__title {
-    font-size: 20px;
+    font-size: 16px;
     font-weight: 700;
     color: var(--text);
     margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
 }
 
 .markdown-docs-main {
@@ -1909,22 +1994,22 @@ body.dark-mode .blocklens-block-node__preview {
     max-width: 1200px;
     margin: 0 auto;
     width: 100%;
-    padding: 24px;
+    padding: 16px;
 }
 
 .markdown-docs-toolbar {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
-    margin-bottom: 20px;
-    flex-wrap: nowrap;
+    gap: 12px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
     overflow-x: auto;
     position: sticky;
     top: 0;
     z-index: 10;
     background: var(--bg);
-    padding: 12px 0;
+    padding: 8px 0;
     border-radius: 12px;
     /* Hide scrollbar on desktop if not needed, or style it */
     scrollbar-width: thin;
@@ -2029,9 +2114,9 @@ body.dark-mode .blocklens-block-node__preview {
     flex: 1;
     overflow: auto;
     /* Allow both vertical and horizontal scrolling */
-    padding: 32px 48px;
+    padding: 20px 24px;
     background: var(--bg-secondary);
-    border-radius: 16px;
+    border-radius: 12px;
     box-shadow: 0 4px 16px var(--shadow);
     border: 1px solid var(--border);
     color: var(--text);
@@ -2412,11 +2497,14 @@ body.dark-mode .markdown-raw-area {
 
 .docs-block-wrapper {
     position: relative;
-    display: block;
-    width: 100%;
+    display: inline-flex;
+    align-items: center;
+    width: auto;
+    max-width: 450px;
     margin-right: 0;
-    margin-bottom: 24px;
+    margin-bottom: 20px;
     min-width: 50px;
+    overflow: hidden;
 }
 
 .docs-block-wrapper--property {
@@ -2427,16 +2515,23 @@ body.dark-mode .markdown-raw-area {
 .docs-block-wrapper .docs-block-preview,
 .docs-block-wrapper .docs-block-svg,
 .docs-block-wrapper .blockly-block-container {
-    display: block;
+    display: inline-block;
     width: auto;
     height: auto;
     overflow: visible;
+    min-width: min-content;
+    flex-shrink: 0;
 }
 
-/* Ensure SVG is visible */
-.docs-block-wrapper svg {
+/* Ensure SVG is visible and properly sized */
+.docs-block-wrapper svg,
+.blocklySvg {
     display: block;
     overflow: visible;
+    max-width: 100%;
+    height: auto;
+    min-height: 80px;
+    max-height: 100px;
 }
 
 .docs-block-download-btn {
@@ -2457,6 +2552,57 @@ body.dark-mode .markdown-raw-area {
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
     transition: all 0.2s ease;
     z-index: 10;
+}
+
+/* Mobile Responsive Styles for Block Display */
+@media (max-width: 768px) {
+    .docs-block-item {
+        margin: 16px 0;
+        padding: 12px;
+    }
+
+    .docs-block-item h3 {
+        font-size: 1em;
+        margin-bottom: 6px;
+    }
+
+    .docs-block-preview {
+        padding: 8px;
+        margin: 8px 0;
+        border-radius: 6px;
+        max-height: 300px;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .docs-block-wrapper {
+        margin-bottom: 16px;
+        max-height: 320px;
+    }
+
+    .docs-block-wrapper svg {
+        max-height: 280px;
+        width: auto;
+    }
+
+    .docs-block-download-btn {
+        width: 24px;
+        height: 24px;
+        top: 1px;
+        right: 1px;
+    }
+
+    .docs-block-download-btn i {
+        font-size: 16px;
+    }
+
+    .docs-description {
+        font-size: 0.9em;
+        margin-bottom: 8px;
+    }
+
+    .blocklySvg {
+        max-height: 280px !important;
+    }
 }
 
 .docs-block-download-btn:hover {

@@ -119,6 +119,25 @@ No installation required! Just upload your `.aia` or `.aix` file.
    git clone https://github.com/TechHamara/BlockLens.git
    ```
 
+2. (Optional) verify component coverage and block rendering:
+   - Run the helper script with Node.js:
+     ```bash
+     cd BlockLens/scripts
+     node verify_components.js
+     ```
+     it will print a list of component types missing block definitions.
+   - Alternatively, launch `index.html` in a browser and, after the app
+     loads, open the console and run:
+     ```js
+     BlocklyBlockRenderer.verifyAll();
+     ```
+     a grid of sample blocks will be appended to the page; any failures
+     will also be logged in the console.
+
+   These tools make it easy to check that every App Inventor component
+   from `unchive/simple_components.json` has an associated block image.
+
+
 2. Navigate to the project folder
    ```bash
    cd ai-unchive

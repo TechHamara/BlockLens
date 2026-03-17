@@ -5,7 +5,18 @@ import { ExtensionViewer, MockBlockRenderer } from './extension_viewer.js';
 export class AIAReader {
     static async read(source) {
         return new Promise(async (resolve, reject) => {
+            // always start with the built-in component descriptors
             AIProject.descriptorJSON = await DescriptorGenerator.generate();
+            // quick audit: warn if there are descriptors without corresponding
+            // Blockly block implementations (helps catch missing library files)
+            if (window && window.Blockly) {
+                AIProject.descriptorJSON.forEach(desc => {
+                    const type = desc.type.split('.').pop();
+                    if (!window.Blockly.Blocks[type]) {
+                        console.warn('⚠️ AIAReader audit: no Blockly block defined for', type);
+                    }
+                });
+            }
 
             const project = new AIProject();
             const reader = source instanceof Blob
@@ -14,17 +25,63 @@ export class AIAReader {
 
             zip.createReader(reader, (zipReader) => {
                 zipReader.getEntries(async (entries) => {
+                    console.log('🔍 AIAReader: total entries in archive =', entries.length);
                     if (entries.length) {
-                        project.addExtensions(await this.generateExtensions(
-                            entries.filter(e => this.getFileType(e) === 'json')
-                        ));
-                        project.addScreens(await this.generateScreens(
-                            entries.filter(e => this.getFileType(e) === 'scm' || this.getFileType(e) === 'bky'),
-                            project
-                        ));
-                        project.addAssets(await this.generateAssets(
-                            entries.filter(e => e.filename.split('/')[0] === 'assets' && e.filename.split('/')[2] == null)
-                        ));
+                        // filter json files (extensions and build info)
+                        const jsonEntries = entries.filter(e => ['json'].includes(this.getFileType(e)));
+                        console.log('📦 AIAReader: found JSON entries:', jsonEntries.map(e => e.filename));
+                        project.addExtensions(await this.generateExtensions(jsonEntries));
+
+                        // gather screens
+                        const screenEntries = entries.filter(e => {
+                            const t = this.getFileType(e);
+                            return t === 'scm' || t === 'bky';
+                        });
+                        console.log('🖥 AIAReader: found screen files:', screenEntries.map(e => e.filename));
+                        project.addScreens(await this.generateScreens(screenEntries, project));
+
+                        // after screens loaded, log any unknown block types so that missing
+                        // component descriptors from simple_components.json can be identified
+                        try {
+                            const types = new Set();
+                            project.screens.forEach(s => {
+                                if (s.blocks) {
+                                    const xml = new DOMParser().parseFromString(s.blocks, 'text/xml');
+                                    xml.querySelectorAll('block').forEach(b => {
+                                        const t = b.getAttribute('type');
+                                        if (t) types.add(t);
+                                    });
+                                }
+                            });
+                            types.forEach(t => {
+                                let found = AIProject.descriptorJSON.find(d =>
+                                    d.type === 'com.google.appinventor.components.runtime.' + t
+                                );
+                                if (!found) {
+                                    // check extensions in this project as well
+                                    const extMatch = project.extensions?.find(ext =>
+                                        ext.name.split('.').pop() === t
+                                    );
+                                    if (extMatch) {
+                                        found = extMatch.descriptorJSON;
+                                    }
+                                }
+                                if (!found) {
+                                    console.warn('⚠️ AIAReader: block type has no descriptor', t);
+                                }
+                            });
+                        } catch (e) {
+                            console.warn('Could not analyze block types:', e);
+                        }
+
+                        // assets at root of assets/ folder
+                        const assetEntries = entries.filter(e => {
+                            const parts = e.filename.split('/');
+                            return parts[0] === 'assets' && parts.length === 2;
+                        });
+                        console.log('🖼 AIAReader: found asset files:', assetEntries.map(e => e.filename));
+                        project.addAssets(await this.generateAssets(assetEntries));
+
                         resolve(project);
                     }
                 });
@@ -39,17 +96,26 @@ export class AIAReader {
 
         for (let entry of entries) {
             const content = await this.getFileContent(entry);
-            if (this.getFileType(entry) === 'scm') {
-                scms.push({ name: this.getFileName(entry), scm: content });
-            } else if (this.getFileType(entry) === 'bky') {
-                bkys.push({ name: this.getFileName(entry), bky: content });
+            const type = this.getFileType(entry);
+            const name = this.getFileName(entry);
+            if (type === 'scm') {
+                scms.push({ name, scm: content });
+            } else if (type === 'bky') {
+                bkys.push({ name, bky: content });
+            } else {
+                // unknown type filtered earlier, but log for safety
+                console.warn('⚠️ AIAReader.generateScreens: unexpected file type', entry.filename);
             }
         }
 
         for (let scm of scms) {
             const screen = new AIScreen();
-            const bky = bkys.find(b => b.name === scm.name);
-            screens.push(screen.init(scm.scm, bky.bky, scm.name, project));
+            const bkyEntry = bkys.find(b => b.name === scm.name);
+            if (!bkyEntry) {
+                console.warn(`⚠️ AIAReader.generateScreens: missing .bky for screen ${scm.name}`);
+            }
+            const bky = bkyEntry ? bkyEntry.bky : '<xml></xml>'; // empty placeholder if missing
+            screens.push(screen.init(scm.scm, bky, scm.name, project));
         }
 
         return Promise.all(screens);
@@ -63,17 +129,26 @@ export class AIAReader {
         for (let entry of entries) {
             const content = await this.getFileContent(entry);
             const filename = this.getFileName(entry);
+            console.log('🔧 AIAReader.generateExtensions processing', filename);
 
-            if (filename === 'component_build_infos' || filename === 'component_build_info') {
+            // Some archives may include the type as part of the path or use uppercase
+            if (/component_build_info/i.test(filename)) {
+                // third segment of path usually holds the extension name
+                const parts = entry.filename.split('/');
+                const name = parts[2] || filename;
                 buildInfos.push({
-                    name: entry.filename.split('/')[2],
+                    name,
                     info: JSON.parse(content)
                 });
-            } else if (filename === 'components' || filename === 'component') {
+            } else if (/^component(s)?$/i.test(filename)) {
+                const parts = entry.filename.split('/');
+                const name = parts[2] || filename;
                 descriptors.push({
-                    name: entry.filename.split('/')[2],
+                    name,
                     descriptor: JSON.parse(content)
                 });
+            } else {
+                // might be other JSON data (e.g. project properties) – ignore
             }
         }
 
@@ -81,6 +156,10 @@ export class AIAReader {
             if (Array.isArray(buildInfo.info)) {
                 for (let info of buildInfo.info) {
                     const descriptor = descriptors.find(d => d.name === buildInfo.name);
+                    if (!descriptor) {
+                        console.warn('⚠️ Extension buildInfo without matching descriptor', buildInfo.name);
+                        continue;
+                    }
                     extensions.push(new AIExtension(
                         info.type,
                         descriptor.descriptor[buildInfo.info.indexOf(info)]
@@ -88,6 +167,10 @@ export class AIAReader {
                 }
             } else {
                 const descriptor = descriptors.find(d => d.name === buildInfo.name);
+                if (!descriptor) {
+                    console.warn('⚠️ Extension buildInfo without matching descriptor', buildInfo.name);
+                    continue;
+                }
                 extensions.push(new AIExtension(buildInfo.info.type, descriptor.descriptor));
             }
         }
@@ -115,7 +198,9 @@ export class AIAReader {
     }
 
     static getFileType(entry) {
-        return entry.filename.split('.').pop();
+        // return lower-case extension (after last dot) to make handling case-insensitive
+        const parts = entry.filename.split('.');
+        return parts.length > 1 ? parts.pop().toLowerCase() : '';
     }
 
     static getFileName(entry) {

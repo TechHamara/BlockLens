@@ -71,8 +71,13 @@ export class AIScreen {
     }
 
     async generateSchemeData(scm) {
-        const json = JSON.parse(scm.substring(9, scm.length - 3));
-        return this.generateComponent(json.Properties);
+        try {
+            const json = JSON.parse(scm.substring(9, scm.length - 3));
+            return this.generateComponent(json.Properties);
+        } catch (e) {
+            console.error('🛑 AIScreen.generateSchemeData failed to parse scm:', e, scm);
+            throw e;
+        }
     }
 
     async generateComponent(properties) {
@@ -213,15 +218,29 @@ export class BlocklyWorkspace {
             }
             this.workspace.setScale(1);
             this.workspace.getDescriptor = (type) => {
+                // look among built-in components
                 let descriptor = AIProject.descriptorJSON.find(d =>
                     d.type === 'com.google.appinventor.components.runtime.' + type
                 );
                 if (descriptor == null) {
+                    // try extension descriptors registered on the project
                     for (let ext of RootPanel.project?.extensions || []) {
                         if (ext.name.split('.').pop() === type) {
                             return ext.descriptorJSON;
                         }
                     }
+                }
+                if (!descriptor) {
+                    console.warn('⚠️ BlocklyWorkspace.getDescriptor: missing descriptor for', type);
+                    // return a minimal placeholder so that blocks still render
+                    descriptor = {
+                        type: 'com.google.appinventor.components.runtime.' + type,
+                        name: type,
+                        properties: [],
+                        events: [],
+                        methods: [],
+                        blockProperties: []
+                    };
                 }
                 return descriptor;
             };
@@ -672,6 +691,7 @@ export class BlocklyWorkspace {
         try {
             Blockly.Xml.domToBlock(this.blocks, this.workspace).setCollapsed(false);
         } catch (error) {
+            console.error('🛑 BlocklyWorkspace.addBlocksToWorkspace error:', error, this.blocks);
             this.faulty = true;
         } finally {
             if (this.validTypes.indexOf(this.blocks.getAttribute('type')) === -1) {
