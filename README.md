@@ -12,7 +12,7 @@
   <a href="https://techhamara.github.io/BlockLens/">
     <img src="https://img.shields.io/badge/Live%20Demo-Visit%20Website-6200EA?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Live Demo">
   </a>
-  <img src="https://img.shields.io/badge/Version-1.1.0-blue?style=for-the-badge" alt="Version 1.1.0">
+  <img src="https://img.shields.io/badge/Version-1.1.2-blue?style=for-the-badge" alt="Version 1.1.2">
   <img src="https://img.shields.io/badge/Built%20With-Vanilla%20JS-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black" alt="Built with Vanilla JS">
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="MIT License">
 </p>
