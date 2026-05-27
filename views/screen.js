@@ -554,31 +554,39 @@ class UploadPage extends View {
     setupDragDrop() {
         const dropZone = this.dropZone.domElement;
 
+        // Prevent browser default drop actions globally to avoid navigating away
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            dropZone.addEventListener(eventName, (e) => {
+            window.addEventListener(eventName, (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-            });
+            }, false);
         });
 
+        // Add active style to drop zone when dragging over the window/document
         ['dragenter', 'dragover'].forEach(eventName => {
-            dropZone.addEventListener(eventName, () => {
+            window.addEventListener(eventName, (e) => {
+                e.preventDefault();
                 this.dropZone.addStyleName('upload-page__drop-zone--active');
-            });
+            }, false);
         });
 
-        ['dragleave', 'drop'].forEach(eventName => {
-            dropZone.addEventListener(eventName, () => {
+        // Remove active style when drag leaves the page
+        window.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            if (e.relatedTarget === null || e.relatedTarget === document.documentElement) {
                 this.dropZone.removeStyleName('upload-page__drop-zone--active');
-            });
-        });
+            }
+        }, false);
 
-        dropZone.addEventListener('drop', (e) => {
+        // Handle dropped files anywhere on the page
+        window.addEventListener('drop', (e) => {
+            e.preventDefault();
+            this.dropZone.removeStyleName('upload-page__drop-zone--active');
             const files = e.dataTransfer.files;
             if (files.length > 0) {
                 Opener.openFile(files[0].name, files[0]);
             }
-        });
+        }, false);
     }
 }
 
@@ -588,7 +596,7 @@ class UploadPage extends View {
 class Opener {
     static async openFile(path, file) {
         const parts = path.split('.');
-        const ext = parts.pop().toLowerCase();
+        const ext = parts.pop().toLowerCase().trim();
         const name = parts.join('.').split('\\').pop().split('/').pop();
 
         console.log('Opening file:', name, 'extension:', ext);

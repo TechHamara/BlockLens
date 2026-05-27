@@ -119,8 +119,53 @@ export class ExtensionViewer {
                 if (params.length > 0) {
                     lines.push('| Parameter | Type |');
                     lines.push('| - | - |');
-                    for (const p of params) lines.push(`| ${p.name} | ${p.type || 'any'} |`);
+                    for (const p of params) {
+                        let typeStr = p.type || 'any';
+                        if (p.helper) {
+                            const helperData = p.helper.data;
+                            const key = helperData && (helperData.key || helperData.tag) || p.helper.type;
+                            if (key) {
+                                typeStr = `${key} <small><mark>(helper blocks)</mark></small>`;
+                            }
+                        }
+                        lines.push(`| ${p.name} | ${typeStr} |`);
+                    }
                     lines.push('');
+
+                    // Add enums for each parameter that has a helper with options
+                    params.forEach(p => {
+                        if (p.helper) {
+                            const helperData = p.helper.data || p.helper;
+                            let key = helperData && (helperData.key || helperData.tag) || p.helper.type;
+                            let enums = [];
+                            if (helperData && helperData.options && Array.isArray(helperData.options)) {
+                                enums = helperData.options.map(opt => opt.name);
+                            } else if (helperData && Array.isArray(helperData)) {
+                                enums = helperData;
+                            } else if (helperData && helperData.keys && Array.isArray(helperData.keys)) {
+                                enums = helperData.keys;
+                            } else if (p.helper.keys && Array.isArray(p.helper.keys)) {
+                                enums = p.helper.keys;
+                            }
+
+                            if (enums && enums.length > 0) {
+                                const enumString = enums.map(item => `\`${item}\``).join(', ');
+                                lines.push(`* Enums for **${key}**: ${enumString}`);
+                            }
+                        }
+                    });
+
+                    const hasEnums = params.some(p => {
+                        if (!p.helper) return false;
+                        const helperData = p.helper.data || p.helper;
+                        return (helperData && helperData.options && Array.isArray(helperData.options)) || 
+                               (helperData && Array.isArray(helperData)) || 
+                               (helperData && helperData.keys && Array.isArray(helperData.keys)) || 
+                               (p.helper.keys && Array.isArray(p.helper.keys));
+                    });
+                    if (hasEnums) {
+                        lines.push('');
+                    }
                 }
             });
         }
@@ -145,8 +190,53 @@ export class ExtensionViewer {
                 if (params.length > 0) {
                     lines.push('| Parameter | Type |');
                     lines.push('| - | - |');
-                    for (const p of params) lines.push(`| ${p.name} | ${p.type || 'any'} |`);
+                    for (const p of params) {
+                        let typeStr = p.type || 'any';
+                        if (p.helper) {
+                            const helperData = p.helper.data;
+                            const key = helperData && (helperData.key || helperData.tag) || p.helper.type;
+                            if (key) {
+                                typeStr = `${key} <small><mark>(helper blocks)</mark></small>`;
+                            }
+                        }
+                        lines.push(`| ${p.name} | ${typeStr} |`);
+                    }
                     lines.push('');
+
+                    // Add enums for each parameter that has a helper with options
+                    params.forEach(p => {
+                        if (p.helper) {
+                            const helperData = p.helper.data || p.helper;
+                            let key = helperData && (helperData.key || helperData.tag) || p.helper.type;
+                            let enums = [];
+                            if (helperData && helperData.options && Array.isArray(helperData.options)) {
+                                enums = helperData.options.map(opt => opt.name);
+                            } else if (helperData && Array.isArray(helperData)) {
+                                enums = helperData;
+                            } else if (helperData && helperData.keys && Array.isArray(helperData.keys)) {
+                                enums = helperData.keys;
+                            } else if (p.helper.keys && Array.isArray(p.helper.keys)) {
+                                enums = p.helper.keys;
+                            }
+
+                            if (enums && enums.length > 0) {
+                                const enumString = enums.map(item => `\`${item}\``).join(', ');
+                                lines.push(`* Enums for **${key}**: ${enumString}`);
+                            }
+                        }
+                    });
+                    
+                    const hasEnums = params.some(p => {
+                        if (!p.helper) return false;
+                        const helperData = p.helper.data || p.helper;
+                        return (helperData && helperData.options && Array.isArray(helperData.options)) || 
+                               (helperData && Array.isArray(helperData)) || 
+                               (helperData && helperData.keys && Array.isArray(helperData.keys)) || 
+                               (p.helper.keys && Array.isArray(p.helper.keys));
+                    });
+                    if (hasEnums) {
+                        lines.push('');
+                    }
                 }
 
                 if (method.returnType && method.returnType !== 'void') {
@@ -327,6 +417,7 @@ export class ExtensionViewer {
                     .replace(/^### (.*)$/g, '<h3>$1</h3>')
                     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
                     .replace(/`([^`]*)`/g, '<code>$1</code>')
+                    .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank">$1</a>')
                     .replace(/^\* (.*)$/g, '<li>$1</li>')
                     .replace(/^> (.*)$/g, '<blockquote>$1</blockquote>')
                     .replace(/^---$/g, '<hr>');
@@ -367,7 +458,8 @@ export class ExtensionViewer {
     formatCell(cell) {
         return cell
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            .replace(/`([^`]*)`/g, '<code>$1</code>');
+            .replace(/`([^`]*)`/g, '<code>$1</code>')
+            .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank">$1</a>');
     }
 
     downloadMarkdown() {

@@ -394,7 +394,8 @@ class ExtensionInfoCard extends View {
         content.addView(text);
         this.addView(content);
         if (info.description) {
-            const desc = new Label(info.description);
+            let cleanDesc = info.description.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank">$1</a>');
+            const desc = new Label(cleanDesc, true);
             desc.addStyleName('extension-info-card__description');
             this.addView(desc);
         }
@@ -523,7 +524,8 @@ class BlockCard extends View {
         // Description
         if (this.description) {
             // Simple cleanup
-            const cleanDesc = this.description.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+            let cleanDesc = this.description.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+            cleanDesc = cleanDesc.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank">$1</a>');
             const desc = new Label(cleanDesc, true);
             desc.addStyleName('block-card__description');
             this.addView(desc);
@@ -535,11 +537,48 @@ class BlockCard extends View {
     renderDetails() {
         // Parameters Table
         if (this.item.params && this.item.params.length > 0) {
-            const table = this.createTable(['Parameter', 'Type'], this.item.params.map(p => [p.name, p.type || 'any']));
+            const table = this.createTable(['Parameter', 'Type'], this.item.params.map(p => {
+                let typeStr = p.type || 'any';
+                if (p.helper) {
+                    const helperData = p.helper.data || p.helper;
+                    const key = helperData && (helperData.key || helperData.tag) || p.helper.type;
+                    if (key) {
+                        typeStr = `${key} <small><mark>(helper blocks)</mark></small>`;
+                    }
+                }
+                return [p.name, `<code>${typeStr}</code>`];
+            }));
             const lbl = new Label('Parameters:');
             lbl.addStyleName('block-card__subtitle');
             this.addView(lbl);
             this.addView(table);
+
+            // Append enums lists under the table
+            this.item.params.forEach(p => {
+                if (p.helper) {
+                    const helperData = p.helper.data || p.helper;
+                    let key = helperData && (helperData.key || helperData.tag) || p.helper.type;
+                    let enums = [];
+                    if (helperData && helperData.options && Array.isArray(helperData.options)) {
+                        enums = helperData.options.map(opt => opt.name);
+                    } else if (helperData && Array.isArray(helperData)) {
+                        enums = helperData;
+                    } else if (helperData && helperData.keys && Array.isArray(helperData.keys)) {
+                        enums = helperData.keys;
+                    } else if (p.helper.keys && Array.isArray(p.helper.keys)) {
+                        enums = p.helper.keys;
+                    }
+
+                    if (enums && enums.length > 0) {
+                        const enumString = enums.map(optName => `<code>${optName}</code>`).join(', ');
+                        const enumLabel = new Label(`* Enums for <b>${key}</b>: ${enumString}`, true);
+                        enumLabel.domElement.style.margin = '4px 0';
+                        enumLabel.domElement.style.fontSize = '0.9em';
+                        enumLabel.domElement.style.color = 'var(--text-secondary)';
+                        this.addView(enumLabel);
+                    }
+                }
+            });
         }
 
         // Return Type
@@ -553,7 +592,11 @@ class BlockCard extends View {
         if (this.item.helper && this.item.helper.type === 'OPTION_LIST' && this.item.helper.data) {
             const options = this.item.helper.data.options || [];
             if (options.length > 0) {
-                const table = this.createTable(['Option', 'Value', 'Description'], options.map(o => [o.name, o.value, o.description || '-']));
+                const table = this.createTable(['Option', 'Value', 'Description'], options.map(o => {
+                    let descStr = o.description || '-';
+                    descStr = descStr.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank">$1</a>');
+                    return [o.name, o.value, descStr];
+                }));
                 const lbl = new Label('Available Options:');
                 lbl.addStyleName('block-card__subtitle');
                 this.addView(lbl);
@@ -581,7 +624,7 @@ class BlockCard extends View {
             const tr = new View('TR');
             row.forEach(cell => {
                 const td = new View('TD');
-                td.domElement.innerText = cell;
+                td.domElement.innerHTML = cell;
                 tr.addView(td);
             });
             tbody.addView(tr);

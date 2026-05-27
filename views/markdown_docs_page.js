@@ -34,19 +34,22 @@ export class MarkdownDocsPage extends View {
                 // Classic AI2 Colors
                 event: { fill: '#b18e35', stroke: '#B38520' },    // AI2 Component Mustard/Gold
                 method: { fill: '#7c5385', stroke: '#6421B3' },   // AI2 Component Purple
-                property: { fill: '#266643', stroke: '#23803C' }  // AI2 Component Green
+                property: { fill: '#266643', stroke: '#23803C' }, // AI2 Component Green
+                helper: { fill: '#BF4343', stroke: '#8F2D2D' }    // AI2 Helper Red
             },
             'Kodular': {
                 // Kodular's slightly muted, modern pastel-material palette
                 event: { fill: '#ffa726', stroke: '#B87322' },    // Kodular Amber/Orange
                 method: { fill: '#5e35b1', stroke: '#624188' },   // Kodular Soft Indigo/Purple
-                property: { fill: '#388e3c', stroke: '#318548' }  // Kodular Teal-ish Green
+                property: { fill: '#388e3c', stroke: '#318548' }, // Kodular Teal-ish Green
+                helper: { fill: '#F57C00', stroke: '#E65100' }    // Kodular Helper Orange
             },
             'Niotron': {
                 // Niotron's vibrant, high-contrast Material Design palette
                 event: { fill: '#FF9800', stroke: '#C67600' },    // Niotron Material Orange
                 method: { fill: '#9C27B0', stroke: '#7A1EA1' },   // Niotron Material Purple
-                property: { fill: '#4CAF50', stroke: '#388E3C' }  // Niotron Material Green
+                property: { fill: '#4CAF50', stroke: '#388E3C' }, // Niotron Material Green
+                helper: { fill: '#F44336', stroke: '#D32F2F' }    // Niotron Helper Red
             }
         };
     }
@@ -116,6 +119,12 @@ export class MarkdownDocsPage extends View {
     }
 
     renderPreview() {
+        // Helper to format markdown links in HTML
+        const formatMarkdownLinks = (str) => {
+            if (!str) return '';
+            return str.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank">$1</a>');
+        };
+
         // Generate rich documentation with inline block images
         this.previewArea.domElement.innerHTML = '';
 
@@ -144,7 +153,7 @@ export class MarkdownDocsPage extends View {
                             ${info.minSdk ? `<tr><td>📱 Minimum API Level</td><td>${info.minSdk}</td></tr>` : ''}
                             ${info.author ? `<tr><td>👤 Author</td><td>${info.author}</td></tr>` : ''}
                             <tr><td>📅 Updated</td><td>${info.dateBuilt ? info.dateBuilt.split('T')[0] : new Date().toISOString().split('T')[0]}</td></tr>
-                            ${info.compiledBy ? `<tr><td>💻 Built Using</td><td>${info.compiledBy}</td></tr>` : ''}
+                            ${info.compiledBy ? `<tr><td>💻 Built Using</td><td>${formatMarkdownLinks(info.compiledBy)}</td></tr>` : ''}
                         </tbody>
                     </table>
                 </div>
@@ -283,8 +292,10 @@ export class MarkdownDocsPage extends View {
             this.previewArea.domElement.appendChild(docContainer);
         }
 
-        // Apply current theme to newly rendered blocks
-        this.applyTheme(this.currentTheme, 50);
+        // Apply current theme - trigger after render
+        requestAnimationFrame(() => {
+            this.applyTheme(this.currentTheme);
+        });
     }
 
     setTheme(themeName) {
@@ -300,6 +311,12 @@ export class MarkdownDocsPage extends View {
 
         // always update even if the same theme is selected so colors are reapplied
         this.currentTheme = themeName;
+
+        // Dynamically update Blockly's global helper color so new workspaces match
+        const theme = MarkdownDocsPage.THEMES[themeName];
+        if (typeof Blockly !== 'undefined' && theme && theme.helper) {
+            Blockly.COLOUR_HELPERS = theme.helper.fill;
+        }
 
         // Update the dropdown UI (if available)
         if (this.toolbar && this.toolbar.themeDropdown) {
@@ -372,7 +389,8 @@ export class MarkdownDocsPage extends View {
                 
                 // Step 2: Color helpers AFTER (so they override)
                 setTimeout(() => {
-                    this.applyHelperBlocksRed(svg);
+                    const helperColors = theme.helper || { fill: '#BF4343', stroke: '#8F2D2D' };
+                    this.applyHelperBlocksColor(svg, helperColors);
                 }, 20);
             }, wait);
         });
@@ -403,15 +421,24 @@ export class MarkdownDocsPage extends View {
 
             let count = 0;
             mainElements.forEach((elem) => {
+                // Structurally filter out elements inside nested blocklyDraggable groups (helper blocks)
+                let parent = elem.parentElement;
+                let isNested = false;
+                while (parent && parent !== mainGroup) {
+                    if (parent.classList && parent.classList.contains('blocklyDraggable')) {
+                        isNested = true;
+                        break;
+                    }
+                    parent = parent.parentElement;
+                }
+                if (isNested) {
+                    return; // Skip helper block elements!
+                }
+
                 const fill = elem.getAttribute('fill');
                 
                 // Skip white/transparent/none
                 if (!fill || fill === '#ffffff' || fill === 'white' || fill === 'none') {
-                    return;
-                }
-
-                // Don't touch red (leave for helpers)
-                if (fill === '#BF4343') {
                     return;
                 }
 
@@ -431,14 +458,14 @@ export class MarkdownDocsPage extends View {
     }
 
     /**
-     * Apply RED color to HELPER blocks only (separate function)
-     * This forcefully colors ALL elements in helper blocks to red
+     * Apply themed color to HELPER blocks only
+     * This forcefully colors ALL elements in helper blocks to the theme's helper colors
      */
-    applyHelperBlocksRed(svg) {
-        if (!svg) return;
+    applyHelperBlocksColor(svg, helperColors) {
+        if (!svg || !helperColors) return;
 
         try {
-            console.log('🔴 applyHelperBlocksRed - Making helpers RED');
+            console.log('🔴 applyHelperBlocksColor - Making helpers themed', helperColors);
             
             // Get all groups
             const allGroups = Array.from(svg.querySelectorAll('g.blocklyDraggable'));
@@ -449,7 +476,8 @@ export class MarkdownDocsPage extends View {
                 return;
             }
 
-            const helperRed = '#BF4343';
+            const helperFill = helperColors.fill;
+            const helperStroke = helperColors.stroke || helperFill;
             let filledCount = 0;
             let pathCount = 0;
 
@@ -468,12 +496,12 @@ export class MarkdownDocsPage extends View {
                     // Color SVG shape elements
                     if (['path', 'rect', 'circle', 'ellipse', 'polygon'].includes(tag)) {
                         // FORCE set both fill and stroke
-                        elem.setAttribute('fill', helperRed);
-                        elem.setAttribute('stroke', helperRed);
+                        elem.setAttribute('fill', helperFill);
+                        elem.setAttribute('stroke', helperStroke);
                         
                         // FORCE via style with !important
-                        elem.style.fill = helperRed + ' !important';
-                        elem.style.stroke = helperRed + ' !important';
+                        elem.style.fill = helperFill + ' !important';
+                        elem.style.stroke = helperStroke + ' !important';
                         
                         // Also remove any other fill style attributes
                         elem.removeAttribute('fill-opacity');
@@ -488,10 +516,10 @@ export class MarkdownDocsPage extends View {
                 console.log(`  ✓ Colored ${allElems.length} elements in group ${i}`);
             }
 
-            console.log(`\n✅ DONE: ${filledCount} total elements, ${pathCount} shapes colored RED`);
+            console.log(`\n✅ DONE: ${filledCount} total elements, ${pathCount} shapes colored`);
 
         } catch (e) {
-            console.error('❌ Error in applyHelperBlocksRed:', e);
+            console.error('❌ Error in applyHelperBlocksColor:', e);
         }
     }
 
@@ -598,11 +626,44 @@ export class MarkdownDocsPage extends View {
                     <table class="doc-table">
                         <thead><tr><th>Parameter</th><th>Type</th></tr></thead>
                         <tbody>
-                            ${item.params.map(p => `<tr><td>${p.name}</td><td><code>${p.type || 'any'}</code></td></tr>`).join('')}
+                            ${item.params.map(p => {
+                                let typeStr = p.type || 'any';
+                                if (p.helper) {
+                                    const helperData = p.helper.data;
+                                    const key = helperData && (helperData.key || helperData.tag) || p.helper.type;
+                                    if (key) {
+                                        typeStr = `${key} <small><mark>(helper blocks)</mark></small>`;
+                                    }
+                                }
+                                return `<tr><td>${p.name}</td><td><code>${typeStr}</code></td></tr>`;
+                            }).join('')}
                         </tbody>
                     </table>
                 </div>
             `;
+
+            // Append enums lists under the table
+            item.params.forEach(p => {
+                if (p.helper) {
+                    const helperData = p.helper.data || p.helper;
+                    let key = helperData && (helperData.key || helperData.tag) || p.helper.type;
+                    let enums = [];
+                    if (helperData && helperData.options && Array.isArray(helperData.options)) {
+                        enums = helperData.options.map(opt => opt.name);
+                    } else if (helperData && Array.isArray(helperData)) {
+                        enums = helperData;
+                    } else if (helperData && helperData.keys && Array.isArray(helperData.keys)) {
+                        enums = helperData.keys;
+                    } else if (p.helper.keys && Array.isArray(p.helper.keys)) {
+                        enums = p.helper.keys;
+                    }
+
+                    if (enums && enums.length > 0) {
+                        const enumString = enums.map(optName => `<code>${optName}</code>`).join(', ');
+                        paramsHtml += `<p style="margin: 4px 0; font-size: 0.9em; color: var(--text-secondary);">* Enums for <strong>${key}</strong>: ${enumString}</p>`;
+                    }
+                }
+            });
         }
 
         // Return type for methods
@@ -990,18 +1051,7 @@ export class MarkdownDocsPage extends View {
                 container.appendChild(blockElement);
                 // Apply mobile-responsive styles to SVG
                 this.applyMobileBlockStyles(container);
-                // Apply theme colors immediately after rendering
-                setTimeout(() => {
-                    const svg = container.querySelector('svg');
-                    if (svg) {
-                        const blockType = type; // Use the type parameter, not the attribute
-                        const theme = MarkdownDocsPage.THEMES[this.currentTheme];
-                        console.log(`Coloring block: type=${blockType}, theme=${this.currentTheme}, colors=`, theme[blockType]);
-                        if (theme && blockType && theme[blockType]) {
-                            this.applyColorToSvg(svg, theme[blockType]);
-                        }
-                    }
-                }, 50);
+                // Theme handled by global applyTheme() - removed inline coloring to avoid conflicts
             }
         } catch (e) {
             console.error('Error rendering real Blockly block:', e);
@@ -1024,18 +1074,7 @@ export class MarkdownDocsPage extends View {
                     container.appendChild(svg);
                     // Apply mobile-responsive styles to SVG
                     this.applyMobileBlockStyles(container);
-                    // Apply theme colors immediately after rendering
-                    setTimeout(() => {
-                        const renderedSvg = container.querySelector('svg');
-                        if (renderedSvg) {
-                            const blockType = type; // Use the type parameter
-                            const theme = MarkdownDocsPage.THEMES[this.currentTheme];
-                            console.log(`Coloring fallback block: type=${blockType}, theme=${this.currentTheme}, colors=`, theme[blockType]);
-                            if (theme && blockType && theme[blockType]) {
-                                this.applyColorToSvg(renderedSvg, theme[blockType]);
-                            }
-                        }
-                    }, 50);
+                    // Theme handled by global applyTheme() - removed inline coloring to avoid conflicts
                 }
             } catch (fallbackError) {
                 console.error('Fallback also failed:', fallbackError);
@@ -1529,10 +1568,11 @@ class DocsToolbar extends View {
         themeContainer.addView(themeLabel);
 
         this.themeDropdown = new Dropdown(
-            this.page.currentTheme,
+            this.page.currentTheme || 'App Inventor',
             (e) => {
-                // trim whitespace just in case
-                const val = (e.target.value || '').toString().trim();
+                e.preventDefault();
+                const val = this.themeDropdown.getValue().trim();
+                console.log('🔄 Theme selected:', val);
                 this.page.setTheme(val);
             }
         );
